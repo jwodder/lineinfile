@@ -50,10 +50,12 @@ Write a Python command & library based on the Ansible module of the same name
 
 - The default locator is `AtEOF()`
 
-- Locators have a `feed(str) -> None` method that is passed each line of the
-  file one at a time.  Once the file is processed, the `get_index() -> int`
-  method is called to retrieve the index to pass to `list_of_lines.insert()`
-  for adding the new line.
+- Locators have a `feed(int, str) -> None` method that is passed each line
+  number & line of the file one at a time.  Once the file is processed, the
+  `get_index() -> Optional[int]` method is called to retrieve the index to pass
+  to `list_of_lines.insert()` for adding the new line.
+    - A return value of `None` from `get_index()` means to insert the line at
+      the end of the file.
 
 - TODO: Look into exactly how `regexp` vs. no `regexp` affects behavior with
   `state` being both `present` and `absent`
@@ -93,3 +95,4 @@ Test Cases
   no backup
 - `line` argument has a line ending (Strip it?)
 - regex with `$` anchor and input line has a non-`\n` line ending
+- line is added at EOF, but input file does not end with line ending
