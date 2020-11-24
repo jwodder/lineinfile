@@ -101,24 +101,51 @@ class BeforeLast:
         return self.i
 
 
-def add_line_to_string(s: str, line: str, locator: Optional["Locator"] = None) -> str:
+MatchFirst = BeforeFirst
+MatchLast = BeforeLast
+
+def add_line_to_string(
+    s: str,
+    line: str,
+    regexp: Optional[Patternish] = None,
+    locator: Optional["Locator"] = None,
+    match_first: bool = False,
+) -> str:
+    rgx: Optional["Locator"]
+    if regexp is None:
+        rgx = None
+    elif match_first:
+        rgx = MatchFirst(regexp)
+    else:
+        rgx = MatchLast(regexp)
     loccer = AtEOF() if locator is None else locator
     lines = s.splitlines(keepends=True)
     line_stripped = line.rstrip(LINE_ENDINGS)
+    line_found = False
     for i,ln in enumerate(lines):
+        if rgx is not None:
+            rgx.feed(i, ln)
         if line_stripped == ln.rstrip(LINE_ENDINGS):
-            return s
+            line_found = True
+            if rgx is None:
+                return s
         else:
             loccer.feed(i, ln)
-    insert_point = loccer.get_index()
-    if insert_point is None:
-        if lines:
-            lines[-1] = _ensure_terminated(lines[-1])
-        lines.append(_ensure_terminated(line))
+    match_point = None if rgx is None else rgx.get_index()
+    if match_point is not None:
+        lines[match_point] = _ensure_terminated(line)
+    elif line_found:
+        return s
     else:
-        if lines and insert_point == len(lines):
-            lines[-1] = _ensure_terminated(lines[-1])
-        lines.insert(insert_point, _ensure_terminated(line))
+        insert_point = loccer.get_index()
+        if insert_point is None:
+            if lines:
+                lines[-1] = _ensure_terminated(lines[-1])
+            lines.append(_ensure_terminated(line))
+        else:
+            if lines and insert_point == len(lines):
+                lines[-1] = _ensure_terminated(lines[-1])
+            lines.insert(insert_point, _ensure_terminated(line))
     return ''.join(lines)
 
 def _ensure_compiled(s_or_re: Patternish) -> Pattern:
