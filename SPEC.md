@@ -8,10 +8,15 @@ Write a Python command & library based on the Ansible module of the same name
         - Options:
             - Each one of the following overrides all previous occurrences from
               the same set:
+
                 - -a, --after-first REGEX
                 - -A, --after-last REGEX
                 - -b, --before-first REGEX
                 - -B, --before-last REGEX
+
+                Should inserting the line at the beginning/end of the file be
+                specified via `--eof` and `--bof` options?
+
             - -e, --regexp REGEX
             - -x, --ext EXTENSION — causes file to be backed up if changed
                 - Rethink name
@@ -57,9 +62,6 @@ Write a Python command & library based on the Ansible module of the same name
     - A return value of `None` from `get_index()` means to insert the line at
       the end of the file.
 
-- TODO: Look into exactly how `regexp` vs. no `regexp` affects behavior with
-  `state` being both `present` and `absent`
-
 - Notes on the Ansible module's behavior:
     - Adding a line: When a `regexp` is given, first the file is searched for
       any matching lines, and if none are found, the file is searched for lines
@@ -84,7 +86,7 @@ Write a Python command & library based on the Ansible module of the same name
 
 Test Cases
 ----------
-- Adding a line that does/doesn't end with `\n`
+- Adding a line that ends with `\n`
 - Invoking the CLI with different combinations of `-aAbB`
 - `--create` + nonexistent file + `--ext`/`--always-backup` → no backup
   created?
@@ -95,4 +97,3 @@ Test Cases
   no backup
 - `line` argument has a line ending (Strip it?)
 - regex with `$` anchor and input line has a non-`\n` line ending
-- line is added at EOF, but input file does not end with line ending

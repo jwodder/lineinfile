@@ -112,8 +112,12 @@ def add_line_to_string(s: str, line: str, locator: Optional["Locator"] = None) -
             loccer.feed(i, ln)
     insert_point = loccer.get_index()
     if insert_point is None:
+        if lines:
+            lines[-1] = _ensure_terminated(lines[-1])
         lines.append(_ensure_terminated(line))
     else:
+        if lines and insert_point == len(lines):
+            lines[-1] = _ensure_terminated(lines[-1])
         lines.insert(insert_point, _ensure_terminated(line))
     return ''.join(lines)
 
