@@ -33,7 +33,7 @@ Write a Python command & library based on the Ansible module of the same name
             - -o, --outfile — incompatible with backup options
 
 - Library functions:
-    - `add_line_to_file(filepath, line, regexp=None, locator=Non, backrefs=Falsee, match_first=False, backup_ext=None, always_backup=False, create=False) -> bool`
+    - `add_line_to_file(filepath, line, regexp=None, locator=None, backrefs=False, match_first=False, backup_ext=None, always_backup=False, create=False) -> bool`
         - Returns true iff file changed
     - `remove_lines_from_file(filepath, regexp, [backup options]) -> bool`
         - Returns true iff file changed
@@ -91,3 +91,5 @@ Test Cases
 - Passing `BOF` to an `--after-*` option → treated as a regex
 - function for modifying a file, CLI: line is replaced with itself → no change,
   no backup
+- `line` argument has a line ending (Strip it?)
+- regex with `$` anchor and input line has a non-`\n` line ending

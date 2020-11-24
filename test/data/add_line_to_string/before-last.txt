@@ -1,0 +1,11 @@
+a=b
+foo=apple
+bar=quux
+foo=banana
+spaced = out
+special=.*
+prefeed=hungrypostfeed=full
+special=wordy
+gnusto=cleesh
+foo=coconut
+x=y
