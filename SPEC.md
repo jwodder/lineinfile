@@ -8,15 +8,12 @@ Write a Python command & library based on the Ansible module of the same name
         - Options:
             - Each one of the following overrides all previous occurrences from
               the same set:
-
                 - -a, --after-first REGEX
                 - -A, --after-last REGEX
                 - -b, --before-first REGEX
                 - -B, --before-last REGEX
-
-                Should inserting the line at the beginning/end of the file be
-                specified via `--eof` and `--bof` options?
-
+                - --eof (default)
+                - --bof
             - -e, --regexp REGEX
             - -x, --ext EXTENSION — causes file to be backed up if changed
                 - Rethink name
@@ -71,9 +68,6 @@ Write a Python command & library based on the Ansible module of the same name
           `line` is ignored.
         - When no `regexp` is given, all lines equaling `line` (after stripping
           line endings) are removed.
-    - `BOF` has a special meaning to both `insertbefore` and `insertafter`, but
-      `EOF` only has a special meaning to `insertafter`.
-        - Don't copy this behavior
 
 - TODO: Give the "add" operations an option for causing all pre-existing lines
   matching the regex/line to be deleted before replacing
@@ -83,17 +77,53 @@ Write a Python command & library based on the Ansible module of the same name
 - Give the CLI an option for using the `regex` library? (Installed as an extra)
     - `--use-regex`?
 
+- Should the CLI commands output "File changed" and "No change to file" (or
+  similar) to stderr unless a `--quiet` option is given?
+
+- Give `add` a `--fixed-string` option for modifying `-aAbB`?
+- Give the commands `-x`/`--line-regexp` options for causing regexes/fixed
+  strings to be compared for full-line matches?
+
+- Should there be library functions that operate on a list of pre-split lines?
+    - Such functions should not do anything special regarding line endings
+
+
+Rules for Handling Line Endings
+-------------------------------
+- Lines are terminated by LF, CR, and CR LF only.
+- When comparing an input line against a `line` argument, the line ending is
+  stripped from both.
+    - This is a deviation from Ansible's behavior, which only strips the input
+      line.
+- When matching an input line against `regexp` or a locator, line endings are
+  not stripped.
+- When adding a line to the end of a file, if the file does not end with a line
+  ending, a `\n` is appended before adding `line`.
+- When adding `line` to a document (either as a new line or replacing a
+  pre-existing line), `\n` (converted to the OS's line separator when working
+  with a file) is appended to the line if it does not already end with a line
+  separator; any line ending on the line being replaced (if any) is ignored
+  (If you want to preserve it, use backrefs).  If the only difference between
+  the resulting `line` and the line it's replacing is the line ending, the
+  replacement still occurs, the line ending is modified, and the document is
+  changed.
+
 
 Test Cases
 ----------
-- Adding a line that ends with `\n`
 - Invoking the CLI with different combinations of `-aAbB`
-- `--create` + nonexistent file + `--ext`/`--always-backup` → no backup
-  created?
-- Specifying `EOF`/`BOF`/`[E]OF`/`[B]OF` on the command line
-- Passing `EOF` to a `--before-*` option → treated as a regex
-- Passing `BOF` to an `--after-*` option → treated as a regex
+- `--create` + nonexistent file + `--ext`/`--always-backup` → no backup created
 - function for modifying a file, CLI: line is replaced with itself → no change,
   no backup
 - `line` argument has a line ending (Strip it?)
 - regex with `$` anchor and input line has a non-`\n` line ending
+- locator uses regex with `$`, input line ending is not `\n`
+- line differs only by line ending
+- line matches multiple times, some differing by ending (Resolve with
+  `match_first`)
+- line matches prefeed line
+- line matches postfeed line
+- line matches prefeed, has different terminator
+- line matches a line without a newline
+- Strings passed to a `regexp` argument are compiled without escaping
+- Strings passed to a locator constructor are compiled without escaping

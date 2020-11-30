@@ -12,7 +12,12 @@ __url__          = 'https://github.com/jwodder/lineinfile'
 
 import re
 import sys
-from   typing import Optional, Pattern, TYPE_CHECKING, Union
+from   typing import Optional, TYPE_CHECKING, Union
+
+if sys.version_info[:2] >= (3,9):
+    from re import Pattern
+else:
+    from typing import Pattern
 
 if TYPE_CHECKING:
     if sys.version_info[:2] >= (3, 8):
@@ -28,7 +33,7 @@ if TYPE_CHECKING:
             ...
 
 
-Patternish = Union[str, Pattern]
+Patternish = Union[str, Pattern[str]]
 
 # Line endings recognized by str.splitlines()
 LINE_ENDINGS = "\n\r\v\f\x1C\x1D\x1E\x85\u2028\u2029"
