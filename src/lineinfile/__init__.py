@@ -36,8 +36,6 @@ if TYPE_CHECKING:
 
 Patternish = Union[str, Pattern[str]]
 
-LINE_ENDINGS = "\n\r"
-
 class AtBOF:
     def feed(self, i: int, line: str) -> None:
         pass
@@ -56,7 +54,7 @@ class AtEOF:
 
 class AfterFirst:
     def __init__(self, pattern: Patternish) -> None:
-        self.pattern: Pattern = _ensure_compiled(pattern)
+        self.pattern: Pattern = ensure_compiled(pattern)
         self.i: Optional[int] = None
 
     def feed(self, i: int, line: str) -> None:
@@ -69,7 +67,7 @@ class AfterFirst:
 
 class AfterLast:
     def __init__(self, pattern: Patternish) -> None:
-        self.pattern: Pattern = _ensure_compiled(pattern)
+        self.pattern: Pattern = ensure_compiled(pattern)
         self.i: Optional[int] = None
 
     def feed(self, i: int, line: str) -> None:
@@ -82,7 +80,7 @@ class AfterLast:
 
 class BeforeFirst:
     def __init__(self, pattern: Patternish) -> None:
-        self.pattern: Pattern = _ensure_compiled(pattern)
+        self.pattern: Pattern = ensure_compiled(pattern)
         self.i: Optional[int] = None
 
     def feed(self, i: int, line: str) -> None:
@@ -95,7 +93,7 @@ class BeforeFirst:
 
 class BeforeLast:
     def __init__(self, pattern: Patternish) -> None:
-        self.pattern: Pattern = _ensure_compiled(pattern)
+        self.pattern: Pattern = ensure_compiled(pattern)
         self.i: Optional[int] = None
 
     def feed(self, i: int, line: str) -> None:
@@ -112,11 +110,11 @@ MatchLast = BeforeLast
 
 class MatchLineFirst:
     def __init__(self, line: str) -> None:
-        self.line: str = line.rstrip(LINE_ENDINGS)
+        self.line: str = chomp(line)
         self.i: Optional[int] = None
 
     def feed(self, i: int, line: str) -> None:
-        if self.i is None and self.line == line.rstrip(LINE_ENDINGS):
+        if self.i is None and self.line == chomp(line):
             self.i = i
 
     def get_index(self) -> Optional[int]:
@@ -125,11 +123,11 @@ class MatchLineFirst:
 
 class MatchLineLast:
     def __init__(self, line: str) -> None:
-        self.line: str = line.rstrip(LINE_ENDINGS)
+        self.line: str = chomp(line)
         self.i: Optional[int] = None
 
     def feed(self, i: int, line: str) -> None:
-        if self.line == line.rstrip(LINE_ENDINGS):
+        if self.line == chomp(line):
             self.i = i
 
     def get_index(self) -> Optional[int]:
@@ -167,27 +165,27 @@ def add_line_to_string(
         match_point = line_matcher.get_index()
     if match_point is not None:
         assert match_point < len(lines)
-        lines[match_point] = _ensure_terminated(line)
+        lines[match_point] = ensure_terminated(line)
     else:
         insert_point = loccer.get_index()
         if insert_point is None:
             if lines:
-                lines[-1] = _ensure_terminated(lines[-1])
-            lines.append(_ensure_terminated(line))
+                lines[-1] = ensure_terminated(lines[-1])
+            lines.append(ensure_terminated(line))
         else:
             if lines and insert_point == len(lines):
-                lines[-1] = _ensure_terminated(lines[-1])
-            lines.insert(insert_point, _ensure_terminated(line))
+                lines[-1] = ensure_terminated(lines[-1])
+            lines.insert(insert_point, ensure_terminated(line))
     return ''.join(lines)
 
-def _ensure_compiled(s_or_re: Patternish) -> Pattern:
+def ensure_compiled(s_or_re: Patternish) -> Pattern:
     if isinstance(s_or_re, str):
         return re.compile(s_or_re)
     else:
         return s_or_re
 
-def _ensure_terminated(s: str) -> str:
-    if s.endswith(tuple(LINE_ENDINGS)):
+def ensure_terminated(s: str) -> str:
+    if s.endswith(("\r\n", "\n", "\r")):
         return s
     else:
         return s + '\n'
@@ -207,3 +205,11 @@ def ascii_splitlines(s: str) -> List[str]:
     if lastend < len(s):
         lines.append(s[lastend:])
     return lines
+
+def chomp(s: str) -> str:
+    """ Remove a LF, CR, or CR LF line ending from a string """
+    if s.endswith('\n'):
+        s = s[:-1]
+    if s.endswith('\r'):
+        s = s[:-1]
+    return s
