@@ -1,0 +1,10 @@
+a=b
+foo=apple
+bar=quux
+foo=banana
+spaced = out
+special=.*
+gnusto=cleesh
+special=wordy
+foo=coconut
+x=y

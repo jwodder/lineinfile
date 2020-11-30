@@ -7,7 +7,7 @@ CASES_DIR = Path(__file__).with_name('data') / 'add_line_to_string'
 INPUT = (CASES_DIR / 'input.txt').read_text()
 
 def gentestcases():
-    for cfgfile in CASES_DIR.glob("*.py"):
+    for cfgfile in sorted(CASES_DIR.glob("*.py")):
         cfg = {}
         exec(cfgfile.read_text(), cfg)
         try:
@@ -15,8 +15,10 @@ def gentestcases():
         except KeyError:
             source = INPUT
         else:
-            source = (CASES_DIR / input_file).read_text()
-        output = cfgfile.with_suffix('.txt').read_text()
+            with (CASES_DIR / input_file).open(newline='') as fp:
+                source = fp.read()
+        with cfgfile.with_suffix('.txt').open(newline='') as fp:
+            output = fp.read()
         yield pytest.param(
             source, cfg["line"], cfg["args"], output,
             id=cfgfile.with_suffix('').name,

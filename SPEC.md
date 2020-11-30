@@ -115,15 +115,7 @@ Test Cases
 - `--create` + nonexistent file + `--ext`/`--always-backup` → no backup created
 - function for modifying a file, CLI: line is replaced with itself → no change,
   no backup
-- `line` argument has a line ending (Strip it?)
 - regex with `$` anchor and input line has a non-`\n` line ending
 - locator uses regex with `$`, input line ending is not `\n`
-- line differs only by line ending
-- line matches multiple times, some differing by ending (Resolve with
-  `match_first`)
-- line matches prefeed line
-- line matches postfeed line
-- line matches prefeed, has different terminator
-- line matches a line without a newline
 - Strings passed to a `regexp` argument are compiled without escaping
 - Strings passed to a locator constructor are compiled without escaping

@@ -1,0 +1,6 @@
+apple=red
+foo=barbanana=yellow
+foo=bar
+coconut=brown
+foo=bar
+dragonfruit=red
