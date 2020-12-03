@@ -115,7 +115,3 @@ Test Cases
 - `--create` + nonexistent file + `--ext`/`--always-backup` → no backup created
 - function for modifying a file, CLI: line is replaced with itself → no change,
   no backup
-- regex with `$` anchor and input line has a non-`\n` line ending
-- locator uses regex with `$`, input line ending is not `\n`
-- Strings passed to a `regexp` argument are compiled without escaping
-- Strings passed to a locator constructor are compiled without escaping

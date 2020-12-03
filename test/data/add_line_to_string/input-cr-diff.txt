@@ -1,0 +1,2 @@
+foo=stuff
+bar=stuffquux=apple
