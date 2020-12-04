@@ -87,6 +87,12 @@ Write a Python command & library based on the Ansible module of the same name
 - Should there be library functions that operate on a list of pre-split lines?
     - Such functions should not do anything special regarding line endings
 
+- CLI: When `--backrefs` is not given, should escape sequences in the line be
+  expanded?
+
+- Should the library functions return structures containing information on
+  what, if anything, was changed?
+
 
 Rules for Handling Line Endings
 -------------------------------

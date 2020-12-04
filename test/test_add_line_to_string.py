@@ -27,3 +27,8 @@ def gentestcases():
 @pytest.mark.parametrize('source,line,args,output', gentestcases())
 def test_add_line_to_string(source, line, args, output):
     assert add_line_to_string(source, line, **args) == output
+
+def test_backref_no_regexp():
+    with pytest.raises(ValueError) as excinfo:
+        add_line_to_string(INPUT, "gnusto=cleesh", backrefs=True)
+    assert str(excinfo.value) == "backrefs=True cannot be given without regexp"

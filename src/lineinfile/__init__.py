@@ -15,10 +15,10 @@ import sys
 from   typing import Optional, TYPE_CHECKING, Union
 
 if sys.version_info[:2] >= (3,9):
-    from re import Pattern
+    from re import Match, Pattern
     List = list
 else:
-    from typing import List, Pattern
+    from typing import List, Match, Pattern
 
 if TYPE_CHECKING:
     if sys.version_info[:2] >= (3, 8):
@@ -54,7 +54,7 @@ class AtEOF:
 
 class AfterFirst:
     def __init__(self, pattern: Patternish) -> None:
-        self.pattern: Pattern = ensure_compiled(pattern)
+        self.pattern: Pattern[str] = ensure_compiled(pattern)
         self.i: Optional[int] = None
 
     def feed(self, i: int, line: str) -> None:
@@ -67,7 +67,7 @@ class AfterFirst:
 
 class AfterLast:
     def __init__(self, pattern: Patternish) -> None:
-        self.pattern: Pattern = ensure_compiled(pattern)
+        self.pattern: Pattern[str] = ensure_compiled(pattern)
         self.i: Optional[int] = None
 
     def feed(self, i: int, line: str) -> None:
@@ -80,7 +80,7 @@ class AfterLast:
 
 class BeforeFirst:
     def __init__(self, pattern: Patternish) -> None:
-        self.pattern: Pattern = ensure_compiled(pattern)
+        self.pattern: Pattern[str] = ensure_compiled(pattern)
         self.i: Optional[int] = None
 
     def feed(self, i: int, line: str) -> None:
@@ -93,7 +93,7 @@ class BeforeFirst:
 
 class BeforeLast:
     def __init__(self, pattern: Patternish) -> None:
-        self.pattern: Pattern = ensure_compiled(pattern)
+        self.pattern: Pattern[str] = ensure_compiled(pattern)
         self.i: Optional[int] = None
 
     def feed(self, i: int, line: str) -> None:
@@ -104,8 +104,49 @@ class BeforeLast:
         return self.i
 
 
-MatchFirst = BeforeFirst
-MatchLast = BeforeLast
+class MatchFirst:
+    def __init__(self, pattern: Patternish) -> None:
+        self.pattern: Pattern[str] = ensure_compiled(pattern)
+        self.i: Optional[int] = None
+        self.m: Optional[Match[str]] = None
+
+    def feed(self, i: int, line: str) -> None:
+        if self.i is None:
+            m = self.pattern.search(line)
+            if m:
+                self.i = i
+                self.m = m
+
+    def get_index(self) -> Optional[int]:
+        return self.i
+
+    def expand(self, line: str) -> str:
+        if self.m is None:
+            raise ValueError("No match to expand")  # pragma: no cover
+        else:
+            return self.m.expand(line)
+
+
+class MatchLast:
+    def __init__(self, pattern: Patternish) -> None:
+        self.pattern: Pattern[str] = ensure_compiled(pattern)
+        self.i: Optional[int] = None
+        self.m: Optional[Match[str]] = None
+
+    def feed(self, i: int, line: str) -> None:
+        m = self.pattern.search(line)
+        if m:
+            self.i = i
+            self.m = m
+
+    def get_index(self) -> Optional[int]:
+        return self.i
+
+    def expand(self, line: str) -> str:
+        if self.m is None:
+            raise ValueError("No match to expand")  # pragma: no cover
+        else:
+            return self.m.expand(line)
 
 
 class MatchLineFirst:
@@ -140,6 +181,7 @@ def add_line_to_string(
     regexp: Optional[Patternish] = None,
     locator: Optional["Locator"] = None,
     match_first: bool = False,
+    backrefs: bool = False,
 ) -> str:
     line_matcher: "Locator"
     if match_first:
@@ -149,6 +191,8 @@ def add_line_to_string(
     rgx: Optional["Locator"]
     if regexp is None:
         rgx = None
+        if backrefs:
+            raise ValueError("backrefs=True cannot be given without regexp")
     elif match_first:
         rgx = MatchFirst(regexp)
     else:
@@ -162,9 +206,14 @@ def add_line_to_string(
         loccer.feed(i, ln)
     match_point = None if rgx is None else rgx.get_index()
     if match_point is None:
+        if backrefs:
+            return s
         match_point = line_matcher.get_index()
     if match_point is not None:
         assert match_point < len(lines)
+        if backrefs:
+            assert rgx is not None and rgx.get_index() is not None
+            line = rgx.expand(line)
         lines[match_point] = ensure_terminated(line)
     else:
         insert_point = loccer.get_index()
