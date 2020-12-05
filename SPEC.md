@@ -42,7 +42,7 @@ Write a Python command & library based on the Ansible module of the same name
     - `add_line_to_string(s, line, regexp=None, locator=None, backrefs=False, match_first=False) -> str`
     - `remove_lines_from_string(s, regexp) -> str`
 
-- There are four locator classes:
+- There are six locator classes:
     - `AtBOF()`
     - `AtEOF()`
     - `AfterFirst(str_or_regex)`
@@ -121,3 +121,4 @@ Test Cases
 - `--create` + nonexistent file + `--ext`/`--always-backup` → no backup created
 - function for modifying a file, CLI: line is replaced with itself → no change,
   no backup
+- backing up when a file with the backup's name already exists

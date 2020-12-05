@@ -1,0 +1,7 @@
+a=b
+bar=quux
+spaced = out
+special=.*
+prefeed=hungrypostfeed=full
+special=wordy
+x=y

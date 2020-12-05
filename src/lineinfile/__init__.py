@@ -227,7 +227,13 @@ def add_line_to_string(
             lines.insert(insert_point, ensure_terminated(line))
     return ''.join(lines)
 
-def ensure_compiled(s_or_re: Patternish) -> Pattern:
+def remove_lines_from_string(s: str, regexp: Patternish) -> str:
+    rgx = ensure_compiled(regexp)
+    lines = ascii_splitlines(s)
+    lines = [ln for ln in lines if not rgx.search(ln)]
+    return ''.join(lines)
+
+def ensure_compiled(s_or_re: Patternish) -> Pattern[str]:
     if isinstance(s_or_re, str):
         return re.compile(s_or_re)
     else:
