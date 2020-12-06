@@ -1,9 +1,9 @@
-gnusto=cleesh
 a=b
 foo=apple
 bar=quux
 foo=banana
 spaced = out
+gnusto=cleesh
 special=.*
 prefeed=hungrypostfeed=full
 special=wordy

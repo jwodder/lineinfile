@@ -1,5 +1,5 @@
-from lineinfile import AtBOF
+from lineinfile import AfterFirst
 
 input_file = "input-noeol.txt"
 line = "gnusto=cleesh"
-args = {"locator": AtBOF()}
+args = {"locator": AfterFirst(r'^spaced\s*=')}
