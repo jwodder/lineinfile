@@ -33,6 +33,8 @@ Write a Python command & library based on the Ansible module of the same name
             - [backup options from `add`]
             - -F, --fixed-string — treat regex as a fixed string
             - -o, --outfile — incompatible with backup options
+        - It should be possible to specify the regexp with `-e <regexp>` in
+          case it begins with a hyphen.
 
 - Library functions:
     - `add_line_to_file(filepath, line, regexp=None, locator=None, backrefs=False, match_first=False, backup_ext=None, always_backup=False, create=False) -> bool`
@@ -71,7 +73,7 @@ Write a Python command & library based on the Ansible module of the same name
 
 - TODO: Give the "add" operations an option for causing all pre-existing lines
   matching the regex/line to be deleted before replacing
-    - `--remove-extra-matches`?
+    - `--remove-extra-matches`? `--remove-other-matches`?
     - `-u`, `--unique`? `--unique-match`?
 
 - Give the CLI an option for using the `regex` library? (Installed as an extra)
@@ -92,6 +94,10 @@ Write a Python command & library based on the Ansible module of the same name
 
 - Should the library functions return structures containing information on
   what, if anything, was changed?
+
+- idea: When `backrefs` is in effect, support passing the string to expand
+  separately from the `line` (Pass it as the `backrefs` value?) so that a line
+  can still be added even if the regexp doesn't match
 
 
 Rules for Handling Line Endings

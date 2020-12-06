@@ -10,6 +10,7 @@ __author_email__ = 'lineinfile@varonathe.org'
 __license__      = 'MIT'
 __url__          = 'https://github.com/jwodder/lineinfile'
 
+import os
 import re
 import sys
 from   typing import Optional, TYPE_CHECKING, Union
@@ -226,6 +227,31 @@ def add_line_to_string(
                 lines[-1] = ensure_terminated(lines[-1])
             lines.insert(insert_point, ensure_terminated(line))
     return ''.join(lines)
+
+def add_line_to_file(
+    filepath: Union[str, bytes, os.PathLike],
+    line: str,
+    regexp: Optional[Patternish] = None,
+    locator: Optional["Locator"] = None,
+    match_first: bool = False,
+    backrefs: bool = False,
+) -> bool:
+    with open(filepath) as fp:
+        before = fp.read()
+    after = add_line_to_string(
+        before,
+        line,
+        regexp=regexp,
+        locator=locator,
+        match_first=match_first,
+        backrefs=backrefs,
+    )
+    if after != before:
+        with open(filepath, "w") as fp:
+            fp.write(after)
+        return True
+    else:
+        return False
 
 def remove_lines_from_string(s: str, regexp: Patternish) -> str:
     rgx = ensure_compiled(regexp)
