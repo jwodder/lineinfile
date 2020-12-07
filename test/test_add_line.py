@@ -2,7 +2,7 @@ from   collections import namedtuple
 from   operator    import attrgetter
 from   pathlib     import Path
 import pytest
-from   lineinfile  import add_line_to_file, add_line_to_string
+from   lineinfile  import ALWAYS, CHANGED, add_line_to_file, add_line_to_string
 
 CASES_DIR = Path(__file__).with_name('data') / 'add_line_to_string'
 
@@ -37,7 +37,14 @@ def add_line_cases():
             nonuniversal_lines=cfg.get("nonuniversal_lines", False),
         )
 
-@pytest.mark.parametrize('case', add_line_cases(), ids=attrgetter("name"))
+def listdir(dirpath):
+    return sorted(p.name for p in dirpath.iterdir())
+
+ADD_LINE_CASES = list(add_line_cases())
+
+FILE_ADD_LINE_CASES = [c for c in ADD_LINE_CASES if not c.nonuniversal_lines]
+
+@pytest.mark.parametrize('case', ADD_LINE_CASES, ids=attrgetter("name"))
 def test_add_line_to_string(case):
     assert add_line_to_string(case.input, case.line, **case.args) == case.output
 
@@ -46,14 +53,78 @@ def test_backref_no_regexp():
         add_line_to_string(INPUT, "gnusto=cleesh", backrefs=True)
     assert str(excinfo.value) == "backrefs=True cannot be given without regexp"
 
-@pytest.mark.parametrize(
-    'case',
-    [c for c in add_line_cases() if not c.nonuniversal_lines],
-    ids=attrgetter("name"),
-)
+@pytest.mark.parametrize('case', FILE_ADD_LINE_CASES, ids=attrgetter("name"))
 def test_add_line_to_file(case, tmp_path):
     thefile = tmp_path / "file.txt"
     thefile.write_text(case.input)
     assert add_line_to_file(thefile, case.line, **case.args) == case.changed
-    assert [p.name for p in tmp_path.iterdir()] == ["file.txt"]
+    assert listdir(tmp_path) == ["file.txt"]
     assert thefile.read_text() == case.output
+
+@pytest.mark.parametrize('case', FILE_ADD_LINE_CASES, ids=attrgetter("name"))
+def test_add_line_to_file_backup_changed(case, tmp_path):
+    thefile = tmp_path / "file.txt"
+    thefile.write_text(case.input)
+    assert add_line_to_file(thefile, case.line, **case.args, backup=CHANGED) \
+        == case.changed
+    if case.changed:
+        assert listdir(tmp_path) == ["file.txt", "file.txt~"]
+        assert thefile.with_name(thefile.name + '~').read_text() == case.input
+    else:
+        assert listdir(tmp_path) == ["file.txt"]
+    assert thefile.read_text() == case.output
+
+@pytest.mark.parametrize('case', FILE_ADD_LINE_CASES, ids=attrgetter("name"))
+def test_add_line_to_file_backup_changed_custom_ext(case, tmp_path):
+    thefile = tmp_path / "file.txt"
+    thefile.write_text(case.input)
+    assert add_line_to_file(
+        thefile,
+        case.line,
+        **case.args,
+        backup=CHANGED,
+        backup_ext='.bak',
+    ) == case.changed
+    if case.changed:
+        assert listdir(tmp_path) == ["file.txt", "file.txt.bak"]
+        assert thefile.with_name(thefile.name + '.bak').read_text() \
+            == case.input
+    else:
+        assert listdir(tmp_path) == ["file.txt"]
+    assert thefile.read_text() == case.output
+
+@pytest.mark.parametrize('case', FILE_ADD_LINE_CASES, ids=attrgetter("name"))
+def test_add_line_to_file_backup_always(case, tmp_path):
+    thefile = tmp_path / "file.txt"
+    thefile.write_text(case.input)
+    assert add_line_to_file(thefile, case.line, **case.args, backup=ALWAYS) \
+        == case.changed
+    assert listdir(tmp_path) == ["file.txt", "file.txt~"]
+    assert thefile.with_name(thefile.name + '~').read_text() == case.input
+    assert thefile.read_text() == case.output
+
+@pytest.mark.parametrize('case', FILE_ADD_LINE_CASES, ids=attrgetter("name"))
+def test_add_line_to_file_backup_always_custom_ext(case, tmp_path):
+    thefile = tmp_path / "file.txt"
+    thefile.write_text(case.input)
+    assert add_line_to_file(
+        thefile,
+        case.line,
+        **case.args,
+        backup=ALWAYS,
+        backup_ext='.bak',
+    ) == case.changed
+    assert listdir(tmp_path) == ["file.txt", "file.txt.bak"]
+    assert thefile.with_name(thefile.name + '.bak').read_text() == case.input
+    assert thefile.read_text() == case.output
+
+@pytest.mark.parametrize('when', [CHANGED, ALWAYS])
+def test_empty_backup_ext(when):
+    with pytest.raises(ValueError) as excinfo:
+        add_line_to_file(
+            "nonexistent.txt",
+            "gnusto=cleesh",
+            backup_ext='',
+            backup=when,
+        )
+    assert str(excinfo.value) == "Cannot use empty string as backup_ext"

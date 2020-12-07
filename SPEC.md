@@ -15,11 +15,11 @@ Write a Python command & library based on the Ansible module of the same name
                 - --eof (default)
                 - --bof
             - -e, --regexp REGEX
-            - -x, --ext EXTENSION — causes file to be backed up if changed
-                - Rethink name
-            - --always-backup — causes file to be backed up even if not changed
-                - If --ext is not also given, backup extension defaults to `~`
-                - Rename to "--force-backup"?
+            - -i, --backup-ext EXTENSION
+                - Implies `--backup-changed` if backup mode is not otherwise
+                  set
+            - --backup, --backup-changed — back up file if changed
+            - --backup-always — causes file to be backed up even if not changed
             - --backrefs
                 - Error if `--regexp` is not also given
             - -c, --create — Treat missing files as empty
@@ -37,8 +37,18 @@ Write a Python command & library based on the Ansible module of the same name
           case it begins with a hyphen.
 
 - Library functions:
-    - `add_line_to_file(filepath, line, regexp=None, locator=None, backrefs=False, match_first=False, backup_ext=None, always_backup=False, create=False) -> bool`
+    - `add_line_to_file(filepath, line, regexp=None, locator=None, backrefs=False, match_first=False, backup=None, backup_ext='~', create=False) -> bool`
         - Returns true iff file changed
+        - `backup` takes the following values:
+            - `None` — no backup
+            - `lineinfile.CHANGED` — backup on change
+                - CLI options: `--backup`, `--backup-changed` (synonyms)
+            - `lineinfile.ALWAYS` — always backup
+                - CLI option: `--backup-always`
+
+            The constants are values of a `BackupWhen` enum that are copied
+            into the global scope.
+
     - `remove_lines_from_file(filepath, regexp, [backup options]) -> bool`
         - Returns true iff file changed
     - `add_line_to_string(s, line, regexp=None, locator=None, backrefs=False, match_first=False) -> str`
@@ -99,6 +109,8 @@ Write a Python command & library based on the Ansible module of the same name
   separately from the `line` (Pass it as the `backrefs` value?) so that a line
   can still be added even if the regexp doesn't match
 
+- Add encoding & errors options for the file functions? (and CLI?)
+
 
 Rules for Handling Line Endings
 -------------------------------
@@ -125,6 +137,8 @@ Test Cases
 ----------
 - Invoking the CLI with different combinations of `-aAbB`
 - `--create` + nonexistent file + `--ext`/`--always-backup` → no backup created
+- `--create` + nonexistent file + no change (e.g., due to `backrefs` + no
+  match) → nothing created
 - function for modifying a file, CLI: line is replaced with itself → no change,
   no backup
 - backing up when a file with the backup's name already exists

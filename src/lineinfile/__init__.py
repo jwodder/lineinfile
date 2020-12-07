@@ -10,10 +10,12 @@ __author_email__ = 'lineinfile@varonathe.org'
 __license__      = 'MIT'
 __url__          = 'https://github.com/jwodder/lineinfile'
 
+from   enum    import Enum
 import os
+from   pathlib import Path
 import re
 import sys
-from   typing import Optional, TYPE_CHECKING, Union
+from   typing  import Optional, TYPE_CHECKING, Union
 
 if sys.version_info[:2] >= (3,9):
     from re import Match, Pattern
@@ -176,6 +178,14 @@ class MatchLineLast:
         return self.i
 
 
+class BackupWhen(Enum):
+    CHANGED = "CHANGED"
+    ALWAYS = "ALWAYS"
+
+CHANGED = BackupWhen.CHANGED
+ALWAYS = BackupWhen.ALWAYS
+
+
 def add_line_to_string(
     s: str,
     line: str,
@@ -229,15 +239,20 @@ def add_line_to_string(
     return ''.join(lines)
 
 def add_line_to_file(
-    filepath: Union[str, bytes, os.PathLike],
+    filepath: Union[str, os.PathLike],
     line: str,
     regexp: Optional[Patternish] = None,
     locator: Optional["Locator"] = None,
     match_first: bool = False,
     backrefs: bool = False,
+    backup: Optional[BackupWhen] = None,
+    backup_ext: str = '~',
 ) -> bool:
-    with open(filepath) as fp:
-        before = fp.read()
+    if backup is not None and not backup_ext:
+        raise ValueError("Cannot use empty string as backup_ext")
+    p = Path(filepath)
+    bak = p.with_name(p.name + backup_ext)
+    before = p.read_text()
     after = add_line_to_string(
         before,
         line,
@@ -247,10 +262,13 @@ def add_line_to_file(
         backrefs=backrefs,
     )
     if after != before:
-        with open(filepath, "w") as fp:
-            fp.write(after)
+        if backup is not None:
+            p.replace(bak)
+        p.write_text(after)
         return True
     else:
+        if backup is ALWAYS:
+            bak.write_text(before)
         return False
 
 def remove_lines_from_string(s: str, regexp: Patternish) -> str:
