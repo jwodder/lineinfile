@@ -155,3 +155,41 @@ def test_backup_file_exists(tmp_path, when):
     assert listdir(tmp_path) == ["file.txt", "file.txt.bak"]
     assert (tmp_path / "file.txt.bak").read_text() == INPUT
     assert thefile.read_text() == INPUT + "gnusto=cleesh\n"
+
+@pytest.mark.parametrize('create', [False, True])
+def test_create_file_exists(tmp_path, create):
+    thefile = tmp_path / "file.txt"
+    thefile.write_text(INPUT)
+    assert add_line_to_file(thefile, "gnusto=cleesh", create=create)
+    assert listdir(tmp_path) == ["file.txt"]
+    assert thefile.read_text() == INPUT + "gnusto=cleesh\n"
+
+def test_no_create_file_not_exists(tmp_path):
+    thefile = tmp_path / "file.txt"
+    with pytest.raises(FileNotFoundError):
+        add_line_to_file(thefile, "gnusto=cleesh")
+    assert listdir(tmp_path) == []
+
+def test_create_file_not_exists(tmp_path):
+    thefile = tmp_path / "file.txt"
+    assert add_line_to_file(thefile, "gnusto=cleesh", create=True)
+    assert listdir(tmp_path) == ["file.txt"]
+    assert thefile.read_text() == "gnusto=cleesh\n"
+
+@pytest.mark.parametrize('when', [CHANGED, ALWAYS])
+def test_create_file_not_exists_backup(tmp_path, when):
+    thefile = tmp_path / "file.txt"
+    assert add_line_to_file(thefile, "gnusto=cleesh", create=True, backup=when)
+    assert listdir(tmp_path) == ["file.txt"]
+    assert thefile.read_text() == "gnusto=cleesh\n"
+
+def test_create_file_no_change(tmp_path):
+    thefile = tmp_path / "file.txt"
+    assert not add_line_to_file(
+        thefile,
+        r"\1=cleesh",
+        regexp=r'^(\w+)=',
+        backrefs=True,
+        create=True,
+    )
+    assert listdir(tmp_path) == []

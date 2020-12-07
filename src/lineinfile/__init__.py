@@ -247,12 +247,22 @@ def add_line_to_file(
     backrefs: bool = False,
     backup: Optional[BackupWhen] = None,
     backup_ext: str = '~',
+    create: bool = False,
 ) -> bool:
     if backup is not None and not backup_ext:
         raise ValueError("Cannot use empty string as backup_ext")
     p = Path(filepath)
     bak = p.with_name(p.name + backup_ext)
-    before = p.read_text()
+    try:
+        before = p.read_text()
+    except FileNotFoundError:
+        if create:
+            before = ''
+            creating = True
+        else:
+            raise
+    else:
+        creating = False
     after = add_line_to_string(
         before,
         line,
@@ -262,12 +272,12 @@ def add_line_to_file(
         backrefs=backrefs,
     )
     if after != before:
-        if backup is not None:
+        if backup is not None and not creating:
             p.replace(bak)
         p.write_text(after)
         return True
     else:
-        if backup is ALWAYS:
+        if backup is ALWAYS and not creating:
             bak.write_text(before)
         return False
 

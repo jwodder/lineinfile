@@ -42,9 +42,7 @@ Write a Python command & library based on the Ansible module of the same name
         - `backup` takes the following values:
             - `None` — no backup
             - `lineinfile.CHANGED` — backup on change
-                - CLI options: `--backup`, `--backup-changed` (synonyms)
             - `lineinfile.ALWAYS` — always backup
-                - CLI option: `--backup-always`
 
             The constants are values of a `BackupWhen` enum that are copied
             into the global scope.
@@ -136,6 +134,3 @@ Rules for Handling Line Endings
 Test Cases
 ----------
 - Invoking the CLI with different combinations of `-aAbB`
-- `--create` + nonexistent file + `--ext`/`--always-backup` → no backup created
-- `--create` + nonexistent file + no change (e.g., due to `backrefs` + no
-  match) → nothing created
