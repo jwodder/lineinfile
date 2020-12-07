@@ -128,3 +128,30 @@ def test_empty_backup_ext(when):
             backup=when,
         )
     assert str(excinfo.value) == "Cannot use empty string as backup_ext"
+
+def test_file_line_replaces_self(tmp_path):
+    thefile = tmp_path / "file.txt"
+    thefile.write_text(INPUT)
+    assert not add_line_to_file(
+        thefile,
+        "bar=quux\n",
+        regexp=r'^bar=',
+        backup=CHANGED,
+    )
+    assert listdir(tmp_path) == ["file.txt"]
+    assert thefile.read_text() == INPUT
+
+@pytest.mark.parametrize('when', [CHANGED, ALWAYS])
+def test_backup_file_exists(tmp_path, when):
+    thefile = tmp_path / "file.txt"
+    thefile.write_text(INPUT)
+    (tmp_path / "file.txt.bak").write_text("This will be replaced.\n")
+    assert add_line_to_file(
+        thefile,
+        "gnusto=cleesh",
+        backup=when,
+        backup_ext=".bak",
+    )
+    assert listdir(tmp_path) == ["file.txt", "file.txt.bak"]
+    assert (tmp_path / "file.txt.bak").read_text() == INPUT
+    assert thefile.read_text() == INPUT + "gnusto=cleesh\n"

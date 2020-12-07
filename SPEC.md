@@ -139,6 +139,3 @@ Test Cases
 - `--create` + nonexistent file + `--ext`/`--always-backup` → no backup created
 - `--create` + nonexistent file + no change (e.g., due to `backrefs` + no
   match) → nothing created
-- function for modifying a file, CLI: line is replaced with itself → no change,
-  no backup
-- backing up when a file with the backup's name already exists
