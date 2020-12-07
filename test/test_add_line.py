@@ -4,7 +4,7 @@ from   pathlib     import Path
 import pytest
 from   lineinfile  import ALWAYS, CHANGED, add_line_to_file, add_line_to_string
 
-CASES_DIR = Path(__file__).with_name('data') / 'add_line_to_string'
+CASES_DIR = Path(__file__).with_name('data') / 'add_line'
 
 INPUT = (CASES_DIR / 'input.txt').read_text()
 

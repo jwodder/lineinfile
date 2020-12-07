@@ -2,7 +2,7 @@ from   pathlib    import Path
 import pytest
 from   lineinfile import remove_lines_from_string
 
-CASES_DIR = Path(__file__).with_name('data') / 'remove_lines_from_string'
+CASES_DIR = Path(__file__).with_name('data') / 'remove_lines'
 
 INPUT = (CASES_DIR / 'input.txt').read_text()
 
