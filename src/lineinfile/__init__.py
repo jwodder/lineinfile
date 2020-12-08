@@ -293,10 +293,18 @@ def remove_lines_from_string(s: str, regexp: Patternish) -> str:
 def remove_lines_from_file(
     filepath: Union[str, os.PathLike],
     regexp: Patternish,
+    backup: Optional[BackupWhen] = None,
+    backup_ext: str = '~',
 ) -> bool:
+    if backup is not None and not backup_ext:
+        raise ValueError("Cannot use empty string as backup_ext")
     p = Path(filepath)
     before = p.read_text()
     after = remove_lines_from_string(before, regexp)
+    if backup is not None and (after != before or backup is ALWAYS):
+        bak = p.with_name(p.name + backup_ext)
+        bak.write_text(before)
+        copystat(p, bak)
     if after != before:
         p.write_text(after)
         return True
