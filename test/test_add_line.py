@@ -193,3 +193,38 @@ def test_create_file_no_change(tmp_path):
         create=True,
     )
     assert listdir(tmp_path) == []
+
+@pytest.mark.parametrize('when', [CHANGED, ALWAYS])
+def test_backup_symlink(tmp_path, when):
+    thefile = tmp_path / "file.txt"
+    thefile.write_text(INPUT)
+    linkfile = tmp_path / "link.txt"
+    linkfile.symlink_to(thefile)
+    assert add_line_to_file(
+        linkfile,
+        "gnusto=cleesh",
+        backup=when,
+        backup_ext=".bak",
+    )
+    assert listdir(tmp_path) == ["file.txt", "link.txt", "link.txt.bak"]
+    assert linkfile.is_symlink()
+    assert not (tmp_path / "link.txt.bak").is_symlink()
+    assert (tmp_path / "link.txt.bak").read_text() == INPUT
+    assert thefile.read_text() == INPUT + "gnusto=cleesh\n"
+
+def test_backup_symlink_no_change(tmp_path):
+    thefile = tmp_path / "file.txt"
+    thefile.write_text(INPUT)
+    linkfile = tmp_path / "link.txt"
+    linkfile.symlink_to(thefile)
+    assert not add_line_to_file(
+        linkfile,
+        "foo=apple",
+        backup=ALWAYS,
+        backup_ext=".bak",
+    )
+    assert listdir(tmp_path) == ["file.txt", "link.txt", "link.txt.bak"]
+    assert linkfile.is_symlink()
+    assert not (tmp_path / "link.txt.bak").is_symlink()
+    assert (tmp_path / "link.txt.bak").read_text() == INPUT
+    assert thefile.read_text() == INPUT

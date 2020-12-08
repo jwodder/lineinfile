@@ -14,6 +14,7 @@ from   enum    import Enum
 import os
 from   pathlib import Path
 import re
+from   shutil  import copystat
 import sys
 from   typing  import Optional, TYPE_CHECKING, Union
 
@@ -252,7 +253,6 @@ def add_line_to_file(
     if backup is not None and not backup_ext:
         raise ValueError("Cannot use empty string as backup_ext")
     p = Path(filepath)
-    bak = p.with_name(p.name + backup_ext)
     try:
         before = p.read_text()
     except FileNotFoundError:
@@ -271,14 +271,17 @@ def add_line_to_file(
         match_first=match_first,
         backrefs=backrefs,
     )
+    if (
+        not creating and backup is not None
+        and (after != before or backup is ALWAYS)
+    ):
+        bak = p.with_name(p.name + backup_ext)
+        bak.write_text(before)
+        copystat(p, bak)
     if after != before:
-        if backup is not None and not creating:
-            p.replace(bak)
         p.write_text(after)
         return True
     else:
-        if backup is ALWAYS and not creating:
-            bak.write_text(before)
         return False
 
 def remove_lines_from_string(s: str, regexp: Patternish) -> str:

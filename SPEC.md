@@ -23,6 +23,8 @@ Write a Python command & library based on the Ansible module of the same name
             - --backrefs
                 - Error if `--regexp` is not also given
             - -c, --create — Treat missing files as empty
+                - TODO: Should this create the file even if there are no
+                  changes?
             - -m, --match-first — causes the first line matching the regexp to
               be replaced
             - -M, --match-last — causes the last line matching the regexp to be
@@ -35,6 +37,8 @@ Write a Python command & library based on the Ansible module of the same name
             - -o, --outfile — incompatible with backup options
         - It should be possible to specify the regexp with `-e <regexp>` in
           case it begins with a hyphen.
+        - Should this have a `--create` option or not?  If so, then shouldn't
+          `add --create` create an empty file even if there are no changes?
 
 - Library functions:
     - `add_line_to_file(filepath, line, regexp=None, locator=None, backrefs=False, match_first=False, backup=None, backup_ext='~', create=False) -> bool`
@@ -86,9 +90,6 @@ Write a Python command & library based on the Ansible module of the same name
 
 - Give the CLI an option for using the `regex` library? (Installed as an extra)
     - `--use-regex`?
-
-- Should the CLI commands output "File changed" and "No change to file" (or
-  similar) to stderr unless a `--quiet` option is given?
 
 - Give `add` a `--fixed-string` option for modifying `-aAbB`?
 - Give the commands `-x`/`--line-regexp` options for causing regexes/fixed
