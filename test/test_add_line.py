@@ -1,15 +1,22 @@
-from   collections import namedtuple
-from   operator    import attrgetter
-from   pathlib     import Path
+from   collections         import namedtuple
+from   operator            import attrgetter
+import os
+from   pathlib             import Path
+from   traceback           import format_exception
+from   click.testing       import CliRunner
 import pytest
-from   lineinfile  import ALWAYS, CHANGED, add_line_to_file, add_line_to_string
+from   lineinfile          import ALWAYS, CHANGED, add_line_to_file, \
+                                    add_line_to_string
+from   lineinfile.__main__ import main
 
 CASES_DIR = Path(__file__).with_name('data') / 'add_line'
 
 INPUT = (CASES_DIR / 'input.txt').read_text()
 
 class AddLineCase(
-    namedtuple('AddLineCase', 'name input line args output nonuniversal_lines')
+    namedtuple(
+        'AddLineCase', 'name input line args options output nonuniversal_lines',
+    )
 ):
     @property
     def changed(self):
@@ -33,12 +40,19 @@ def add_line_cases():
             input=source,
             line=cfg["line"],
             args=cfg["args"],
+            options=cfg["options"],
             output=output,
             nonuniversal_lines=cfg.get("nonuniversal_lines", False),
         )
 
 def listdir(dirpath):
     return sorted(p.name for p in dirpath.iterdir())
+
+def show_result(r):
+    if r.exception is not None:
+        return ''.join(format_exception(*r.exc_info))
+    else:
+        return r.output
 
 ADD_LINE_CASES = list(add_line_cases())
 
@@ -228,3 +242,19 @@ def test_backup_symlink_no_change(tmp_path):
     assert not (tmp_path / "link.txt.bak").is_symlink()
     assert (tmp_path / "link.txt.bak").read_text() == INPUT
     assert thefile.read_text() == INPUT
+
+@pytest.mark.parametrize('case', FILE_ADD_LINE_CASES, ids=attrgetter("name"))
+def test_cli_add(case):
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        thefile = Path("file.txt")
+        thefile.write_text(case.input)
+        r = runner.invoke(
+            main,
+            ["add"] + case.options + [case.line, "file.txt"],
+            standalone_mode=False,
+        )
+        assert r.exit_code == 0, show_result(r)
+        assert r.output == ''
+        assert os.listdir() == ["file.txt"]
+        assert thefile.read_text() == case.output

@@ -110,6 +110,9 @@ Write a Python command & library based on the Ansible module of the same name
 
 - Add encoding & errors options for the file functions?
 
+- Give the CLI an `--exit-code` option for altering the exit code based on
+  whether anything changed?  (Failure on change?)
+
 
 Rules for Handling Line Endings
 -------------------------------

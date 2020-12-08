@@ -6,3 +6,4 @@ args = {
     "backrefs": True,
     "locator": AfterFirst(r'^foo='),
 }
+options = ["-e", r'^(notinfile)=(\w+)', "--backrefs", "-a", "^foo="]
