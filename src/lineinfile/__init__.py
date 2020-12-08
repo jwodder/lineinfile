@@ -290,6 +290,19 @@ def remove_lines_from_string(s: str, regexp: Patternish) -> str:
     lines = [ln for ln in lines if not rgx.search(ln)]
     return ''.join(lines)
 
+def remove_lines_from_file(
+    filepath: Union[str, os.PathLike],
+    regexp: Patternish,
+) -> bool:
+    p = Path(filepath)
+    before = p.read_text()
+    after = remove_lines_from_string(before, regexp)
+    if after != before:
+        p.write_text(after)
+        return True
+    else:
+        return False
+
 def ensure_compiled(s_or_re: Patternish) -> Pattern[str]:
     if isinstance(s_or_re, str):
         return re.compile(s_or_re)

@@ -108,7 +108,7 @@ Write a Python command & library based on the Ansible module of the same name
   separately from the `line` (Pass it as the `backrefs` value?) so that a line
   can still be added even if the regexp doesn't match
 
-- Add encoding & errors options for the file functions? (and CLI?)
+- Add encoding & errors options for the file functions?
 
 
 Rules for Handling Line Endings
