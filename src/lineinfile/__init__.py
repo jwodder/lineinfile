@@ -16,7 +16,7 @@ from   pathlib import Path
 import re
 from   shutil  import copystat
 import sys
-from   typing  import Optional, TYPE_CHECKING, Union
+from   typing  import Any, Optional, TYPE_CHECKING, Union
 
 if sys.version_info[:2] >= (3,9):
     from re import Match, Pattern
@@ -47,6 +47,12 @@ class AtBOF:
     def get_index(self) -> Optional[int]:
         return 0
 
+    def __eq__(self, other: Any) -> bool:
+        if type(self) is type(other):
+            return True
+        else:
+            return NotImplemented
+
 
 class AtEOF:
     def feed(self, i: int, line: str) -> None:
@@ -55,57 +61,56 @@ class AtEOF:
     def get_index(self) -> Optional[int]:
         return None
 
+    def __eq__(self, other: Any) -> bool:
+        if type(self) is type(other):
+            return True
+        else:
+            return NotImplemented
 
-class AfterFirst:
+
+class PatternLocator:
     def __init__(self, pattern: Patternish) -> None:
         self.pattern: Pattern[str] = ensure_compiled(pattern)
         self.i: Optional[int] = None
 
+    def get_index(self) -> Optional[int]:
+        return self.i
+
+    def __eq__(self, other: Any) -> bool:
+        if type(self) is type(other):
+            return (self.pattern, self.i) == (other.pattern, other.i)
+        else:
+            return NotImplemented
+
+    def __repr__(self) -> str:
+        return (
+            '{0.__module__}.{0.__name__}(pattern={1.pattern!r}, i={1.i!r})'
+            .format(type(self), self)
+        )
+
+
+class AfterFirst(PatternLocator):
     def feed(self, i: int, line: str) -> None:
         if self.i is None and self.pattern.search(line):
             self.i = i+1
 
-    def get_index(self) -> Optional[int]:
-        return self.i
 
-
-class AfterLast:
-    def __init__(self, pattern: Patternish) -> None:
-        self.pattern: Pattern[str] = ensure_compiled(pattern)
-        self.i: Optional[int] = None
-
+class AfterLast(PatternLocator):
     def feed(self, i: int, line: str) -> None:
         if self.pattern.search(line):
             self.i = i+1
 
-    def get_index(self) -> Optional[int]:
-        return self.i
 
-
-class BeforeFirst:
-    def __init__(self, pattern: Patternish) -> None:
-        self.pattern: Pattern[str] = ensure_compiled(pattern)
-        self.i: Optional[int] = None
-
+class BeforeFirst(PatternLocator):
     def feed(self, i: int, line: str) -> None:
         if self.i is None and self.pattern.search(line):
             self.i = i
 
-    def get_index(self) -> Optional[int]:
-        return self.i
 
-
-class BeforeLast:
-    def __init__(self, pattern: Patternish) -> None:
-        self.pattern: Pattern[str] = ensure_compiled(pattern)
-        self.i: Optional[int] = None
-
+class BeforeLast(PatternLocator):
     def feed(self, i: int, line: str) -> None:
         if self.pattern.search(line):
             self.i = i
-
-    def get_index(self) -> Optional[int]:
-        return self.i
 
 
 class MatchFirst:

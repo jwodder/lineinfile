@@ -1,6 +1,5 @@
 from   collections         import namedtuple
 from   operator            import attrgetter
-import os
 from   pathlib             import Path
 from   traceback           import format_exception
 from   click.testing       import CliRunner
@@ -21,6 +20,9 @@ class AddLineCase(
     @property
     def changed(self):
         return self.input != self.output
+
+# The set of test cases has to be fetched anew for every test because the
+# locators contain mutable state.
 
 def add_line_cases():
     for cfgfile in sorted(CASES_DIR.glob("*.py")):
@@ -45,6 +47,11 @@ def add_line_cases():
             nonuniversal_lines=cfg.get("nonuniversal_lines", False),
         )
 
+def file_add_line_cases():
+    for c in add_line_cases():
+        if not c.nonuniversal_lines:
+            yield c
+
 def listdir(dirpath):
     return sorted(p.name for p in dirpath.iterdir())
 
@@ -54,11 +61,7 @@ def show_result(r):
     else:
         return r.output
 
-ADD_LINE_CASES = list(add_line_cases())
-
-FILE_ADD_LINE_CASES = [c for c in ADD_LINE_CASES if not c.nonuniversal_lines]
-
-@pytest.mark.parametrize('case', ADD_LINE_CASES, ids=attrgetter("name"))
+@pytest.mark.parametrize('case', add_line_cases(), ids=attrgetter("name"))
 def test_add_line_to_string(case):
     assert add_line_to_string(case.input, case.line, **case.args) == case.output
 
@@ -67,7 +70,7 @@ def test_backref_no_regexp():
         add_line_to_string(INPUT, "gnusto=cleesh", backrefs=True)
     assert str(excinfo.value) == "backrefs=True cannot be given without regexp"
 
-@pytest.mark.parametrize('case', FILE_ADD_LINE_CASES, ids=attrgetter("name"))
+@pytest.mark.parametrize('case', file_add_line_cases(), ids=attrgetter("name"))
 def test_add_line_to_file(case, tmp_path):
     thefile = tmp_path / "file.txt"
     thefile.write_text(case.input)
@@ -75,7 +78,7 @@ def test_add_line_to_file(case, tmp_path):
     assert listdir(tmp_path) == ["file.txt"]
     assert thefile.read_text() == case.output
 
-@pytest.mark.parametrize('case', FILE_ADD_LINE_CASES, ids=attrgetter("name"))
+@pytest.mark.parametrize('case', file_add_line_cases(), ids=attrgetter("name"))
 def test_add_line_to_file_backup_changed(case, tmp_path):
     thefile = tmp_path / "file.txt"
     thefile.write_text(case.input)
@@ -88,7 +91,7 @@ def test_add_line_to_file_backup_changed(case, tmp_path):
         assert listdir(tmp_path) == ["file.txt"]
     assert thefile.read_text() == case.output
 
-@pytest.mark.parametrize('case', FILE_ADD_LINE_CASES, ids=attrgetter("name"))
+@pytest.mark.parametrize('case', file_add_line_cases(), ids=attrgetter("name"))
 def test_add_line_to_file_backup_changed_custom_ext(case, tmp_path):
     thefile = tmp_path / "file.txt"
     thefile.write_text(case.input)
@@ -107,7 +110,7 @@ def test_add_line_to_file_backup_changed_custom_ext(case, tmp_path):
         assert listdir(tmp_path) == ["file.txt"]
     assert thefile.read_text() == case.output
 
-@pytest.mark.parametrize('case', FILE_ADD_LINE_CASES, ids=attrgetter("name"))
+@pytest.mark.parametrize('case', file_add_line_cases(), ids=attrgetter("name"))
 def test_add_line_to_file_backup_always(case, tmp_path):
     thefile = tmp_path / "file.txt"
     thefile.write_text(case.input)
@@ -117,7 +120,7 @@ def test_add_line_to_file_backup_always(case, tmp_path):
     assert thefile.with_name(thefile.name + '~').read_text() == case.input
     assert thefile.read_text() == case.output
 
-@pytest.mark.parametrize('case', FILE_ADD_LINE_CASES, ids=attrgetter("name"))
+@pytest.mark.parametrize('case', file_add_line_cases(), ids=attrgetter("name"))
 def test_add_line_to_file_backup_always_custom_ext(case, tmp_path):
     thefile = tmp_path / "file.txt"
     thefile.write_text(case.input)
@@ -243,114 +246,44 @@ def test_backup_symlink_no_change(tmp_path):
     assert (tmp_path / "link.txt.bak").read_text() == INPUT
     assert thefile.read_text() == INPUT
 
-@pytest.mark.parametrize('case', FILE_ADD_LINE_CASES, ids=attrgetter("name"))
-def test_cli_add(case):
-    runner = CliRunner()
-    with runner.isolated_filesystem():
-        thefile = Path("file.txt")
-        thefile.write_text(case.input)
-        r = runner.invoke(
-            main,
-            ["add"] + case.options + [case.line, "file.txt"],
-            standalone_mode=False,
-        )
-        assert r.exit_code == 0, show_result(r)
-        assert r.output == ''
-        assert os.listdir() == ["file.txt"]
-        assert thefile.read_text() == case.output
+CLI_DEFAULTS = {
+    "regexp": None,
+    "backrefs": False,
+    "backup": None,
+    "backup_ext": None,
+    "create": False,
+    "match_first": False,
+    "locator": None,
+}
 
-@pytest.mark.parametrize('case', FILE_ADD_LINE_CASES, ids=attrgetter("name"))
-def test_cli_add_backup_changed(case):
+@pytest.mark.parametrize('case', file_add_line_cases(), ids=attrgetter("name"))
+@pytest.mark.parametrize('backup_opts,backup_args', [
+    ([], {}),
+    (["--backup"], {"backup": CHANGED}),
+    (["--backup-changed"], {"backup": CHANGED}),
+    (["--backup", "-i.bak"], {"backup": CHANGED, "backup_ext": ".bak"}),
+    (["-i.bak"], {"backup": CHANGED, "backup_ext": ".bak"}),
+    (["--backup-ext=.bak"], {"backup": CHANGED, "backup_ext": ".bak"}),
+    (["--backup-always"], {"backup": ALWAYS}),
+    (["--backup-always", "-i.bak"], {"backup": ALWAYS, "backup_ext": ".bak"}),
+    (["-i.bak", "--backup-always"], {"backup": ALWAYS, "backup_ext": ".bak"}),
+])
+def test_cli_add(case, backup_opts, backup_args, mocker):
     runner = CliRunner()
     with runner.isolated_filesystem():
-        thefile = Path("file.txt")
-        thefile.write_text(case.input)
+        Path("file.txt").touch()
+        add_line_mock = mocker.patch(
+            'lineinfile.__main__.add_line_to_file',
+            return_value=case.changed,
+        )
         r = runner.invoke(
             main,
-            ["add"] + case.options + ["--backup", case.line, "file.txt"],
+            ["add"] + case.options + backup_opts + [case.line, "file.txt"],
             standalone_mode=False,
         )
-        assert r.exit_code == 0, show_result(r)
-        assert r.output == ''
-        if case.changed:
-            assert sorted(os.listdir()) == ["file.txt", "file.txt~"]
-            assert Path("file.txt~").read_text() == case.input
-        else:
-            assert os.listdir() == ["file.txt"]
-        assert thefile.read_text() == case.output
-
-@pytest.mark.parametrize('case', FILE_ADD_LINE_CASES, ids=attrgetter("name"))
-def test_cli_add_backup_changed_custom_ext(case):
-    runner = CliRunner()
-    with runner.isolated_filesystem():
-        thefile = Path("file.txt")
-        thefile.write_text(case.input)
-        r = runner.invoke(
-            main,
-            ["add"] + case.options + ["--backup", "-i.bak", case.line, "file.txt"],
-            standalone_mode=False,
-        )
-        assert r.exit_code == 0, show_result(r)
-        assert r.output == ''
-        if case.changed:
-            assert sorted(os.listdir()) == ["file.txt", "file.txt.bak"]
-            assert Path("file.txt.bak").read_text() == case.input
-        else:
-            assert os.listdir() == ["file.txt"]
-        assert thefile.read_text() == case.output
-
-@pytest.mark.parametrize('case', FILE_ADD_LINE_CASES, ids=attrgetter("name"))
-def test_cli_add_backup_ext(case):
-    runner = CliRunner()
-    with runner.isolated_filesystem():
-        thefile = Path("file.txt")
-        thefile.write_text(case.input)
-        r = runner.invoke(
-            main,
-            ["add"] + case.options + ["-i.bak", case.line, "file.txt"],
-            standalone_mode=False,
-        )
-        assert r.exit_code == 0, show_result(r)
-        assert r.output == ''
-        if case.changed:
-            assert sorted(os.listdir()) == ["file.txt", "file.txt.bak"]
-            assert Path("file.txt.bak").read_text() == case.input
-        else:
-            assert os.listdir() == ["file.txt"]
-        assert thefile.read_text() == case.output
-
-@pytest.mark.parametrize('case', FILE_ADD_LINE_CASES, ids=attrgetter("name"))
-def test_cli_add_backup_always(case):
-    runner = CliRunner()
-    with runner.isolated_filesystem():
-        thefile = Path("file.txt")
-        thefile.write_text(case.input)
-        r = runner.invoke(
-            main,
-            ["add"] + case.options + ["--backup-always", case.line, "file.txt"],
-            standalone_mode=False,
-        )
-        assert r.exit_code == 0, show_result(r)
-        assert r.output == ''
-        assert sorted(os.listdir()) == ["file.txt", "file.txt~"]
-        assert Path("file.txt~").read_text() == case.input
-        assert thefile.read_text() == case.output
-
-@pytest.mark.parametrize('case', FILE_ADD_LINE_CASES, ids=attrgetter("name"))
-def test_cli_add_backup_always_custom_ext(case, tmp_path):
-    runner = CliRunner()
-    with runner.isolated_filesystem():
-        thefile = Path("file.txt")
-        thefile.write_text(case.input)
-        r = runner.invoke(
-            main,
-            ["add"] + case.options + [
-                "--backup-always", "-i.bak", case.line, "file.txt",
-            ],
-            standalone_mode=False,
-        )
-        assert r.exit_code == 0, show_result(r)
-        assert r.output == ''
-        assert sorted(os.listdir()) == ["file.txt", "file.txt.bak"]
-        assert Path("file.txt.bak").read_text() == case.input
-        assert thefile.read_text() == case.output
+    assert r.exit_code == 0, show_result(r)
+    assert r.output == ''
+    args = {**CLI_DEFAULTS, **case.args, **backup_args}
+    if args["regexp"] is not None and not isinstance(args["regexp"], str):
+        args["regexp"] = args["regexp"].pattern
+    add_line_mock.assert_called_once_with("file.txt", case.line, **args)
