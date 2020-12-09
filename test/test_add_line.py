@@ -354,3 +354,30 @@ def test_cli_add_locator_options(opts, locator, mocker):
     assert r.output == ''
     args = {**CLI_DEFAULTS, "locator": locator}
     add_line_mock.assert_called_once_with("file.txt", "gnusto=cleesh", **args)
+
+@pytest.mark.parametrize('opts,match_first', [
+    ([], False),
+    (["--match-first"], True),
+    (["--match-last"], False),
+    (["-m", "-M"], False),
+    (["-M", "-m"], True),
+    (["-m", "-M", "-m"], True),
+    (["-M", "-m", "-M"], False),
+])
+def test_cli_add_match_options(opts, match_first, mocker):
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        Path("file.txt").touch()
+        add_line_mock = mocker.patch(
+            'lineinfile.__main__.add_line_to_file',
+            return_value=True,
+        )
+        r = runner.invoke(
+            main,
+            ["add"] + opts + ["gnusto=cleesh", "file.txt"],
+            standalone_mode=False,
+        )
+    assert r.exit_code == 0, show_result(r)
+    assert r.output == ''
+    args = {**CLI_DEFAULTS, "match_first": match_first}
+    add_line_mock.assert_called_once_with("file.txt", "gnusto=cleesh", **args)
