@@ -4,8 +4,10 @@ from   pathlib             import Path
 from   traceback           import format_exception
 from   click.testing       import CliRunner
 import pytest
-from   lineinfile          import ALWAYS, CHANGED, add_line_to_file, \
-                                    add_line_to_string
+from   lineinfile          import (
+    ALWAYS, AfterFirst, AfterLast, AtBOF, AtEOF, BeforeFirst, BeforeLast,
+    CHANGED, add_line_to_file, add_line_to_string
+)
 from   lineinfile.__main__ import main
 
 CASES_DIR = Path(__file__).with_name('data') / 'add_line'
@@ -308,4 +310,45 @@ def test_cli_add_file_not_exists_no_error(backup_opts, backup_args, mocker):
     assert r.exit_code == 0, show_result(r)
     assert r.output == ''
     args = {**CLI_DEFAULTS, **backup_args}
+    add_line_mock.assert_called_once_with("file.txt", "gnusto=cleesh", **args)
+
+@pytest.mark.parametrize('opts,locator', [
+    ([], None),
+    (["--after-first", "foo"], AfterFirst('foo')),
+    (["--after-first", "foo", "--before-last", "bar"], BeforeLast('bar')),
+    (["-B", "bar", "-a", "foo"], AfterFirst('foo')),
+    (["--bof"], AtBOF()),
+    (["--bof", "-A", "foo"], AfterLast('foo')),
+    (["-A", "foo", "--bof"], AtBOF()),
+    (["--bof", "--eof"], AtEOF()),
+    (["--eof", "--bof"], AtBOF()),
+    (["--bof", "--eof", "-b", "foo"], BeforeFirst('foo')),
+    (["-a", "foo", "-A", "bar", "-b", "baz", "-B", "quux"], BeforeLast('quux')),
+    (
+        ["-a", "foo", "-A", "bar", "--bof", "-b", "baz", "-B", "quux"],
+        BeforeLast('quux'),
+    ),
+    (["-a", "foo", "-a", "bar"], AfterFirst('bar')),
+    pytest.param(
+        ["-a", "foo", "-b", "quux", "-a", "bar"],
+        AfterFirst('bar'),
+        marks=pytest.mark.xfail(reason="Click doesn't work that way."),
+    ),
+])
+def test_cli_add_locator_options(opts, locator, mocker):
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        Path("file.txt").touch()
+        add_line_mock = mocker.patch(
+            'lineinfile.__main__.add_line_to_file',
+            return_value=True,
+        )
+        r = runner.invoke(
+            main,
+            ["add"] + opts + ["gnusto=cleesh", "file.txt"],
+            standalone_mode=False,
+        )
+    assert r.exit_code == 0, show_result(r)
+    assert r.output == ''
+    args = {**CLI_DEFAULTS, "locator": locator}
     add_line_mock.assert_called_once_with("file.txt", "gnusto=cleesh", **args)
