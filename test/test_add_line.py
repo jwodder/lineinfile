@@ -2,6 +2,7 @@ from   collections         import namedtuple
 from   operator            import attrgetter
 from   pathlib             import Path
 from   traceback           import format_exception
+import click
 from   click.testing       import CliRunner
 import pytest
 from   lineinfile          import (
@@ -67,7 +68,7 @@ def show_result(r):
 def test_add_line_to_string(case):
     assert add_line_to_string(case.input, case.line, **case.args) == case.output
 
-def test_backref_no_regexp():
+def test_backrefs_no_regexp():
     with pytest.raises(ValueError) as excinfo:
         add_line_to_string(INPUT, "gnusto=cleesh", backrefs=True)
     assert str(excinfo.value) == "backrefs=True cannot be given without regexp"
@@ -381,3 +382,21 @@ def test_cli_add_match_options(opts, match_first, mocker):
     assert r.output == ''
     args = {**CLI_DEFAULTS, "match_first": match_first}
     add_line_mock.assert_called_once_with("file.txt", "gnusto=cleesh", **args)
+
+def test_cli_add_backrefs_no_regex(mocker):
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        Path("file.txt").touch()
+        add_line_mock = mocker.patch(
+            'lineinfile.__main__.add_line_to_file',
+            return_value=True,
+        )
+        r = runner.invoke(
+            main,
+            ["add", "--backrefs", "gnusto=cleesh", "file.txt"],
+            standalone_mode=False,
+        )
+    assert r.exit_code != 0
+    assert isinstance(r.exception, click.UsageError)
+    assert str(r.exception) == "--backrefs cannot be specified without --regexp"
+    add_line_mock.assert_not_called()

@@ -85,6 +85,8 @@ def add(
 ) -> None:
     if backup_ext is not None and backup is None:
         backup = CHANGED
+    if backrefs and regexp is None:
+        raise click.UsageError("--backrefs cannot be specified without --regexp")
     add_line_to_file(
         file,
         line,
