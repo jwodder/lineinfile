@@ -93,7 +93,7 @@ Write a Python command & library based on the Ansible module of the same name
 - Give the CLI an option for using the `regex` library? (Installed as an extra)
     - `--use-regex`?
 
-- Give `add` a `--fixed-string` option for modifying `-aAbB`?
+- Give `add` a `--fixed-string` option for modifying `-e` and/or `-aAbB`?
 - Give the commands `-x`/`--line-regexp` options for causing regexes/fixed
   strings to be compared for full-line matches?
 
@@ -135,8 +135,3 @@ Rules for Handling Line Endings
   the resulting `line` and the line it's replacing is the line ending, the
   replacement still occurs, the line ending is modified, and the document is
   changed.
-
-
-Test Cases
-----------
-- Invoking the CLI with different combinations of `-aAbB`

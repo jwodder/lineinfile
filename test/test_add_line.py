@@ -269,6 +269,8 @@ CLI_DEFAULTS = {
     (["--backup-always"], {"backup": ALWAYS}),
     (["--backup-always", "-i.bak"], {"backup": ALWAYS, "backup_ext": ".bak"}),
     (["-i.bak", "--backup-always"], {"backup": ALWAYS, "backup_ext": ".bak"}),
+    (["--backup-changed", "--backup-always"], {"backup": ALWAYS}),
+    (["--backup-always", "--backup-changed"], {"backup": CHANGED}),
     (["--create"], {"create": True}),
 ])
 def test_cli_add(case, backup_opts, backup_args, mocker):
