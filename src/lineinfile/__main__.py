@@ -83,6 +83,8 @@ def add(
     match_first: bool,
     locator: Optional["Locator"] = None,
 ) -> None:
+    if backup_ext is not None and backup is None:
+        backup = CHANGED
     add_line_to_file(
         file,
         line,

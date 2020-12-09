@@ -258,3 +258,99 @@ def test_cli_add(case):
         assert r.output == ''
         assert os.listdir() == ["file.txt"]
         assert thefile.read_text() == case.output
+
+@pytest.mark.parametrize('case', FILE_ADD_LINE_CASES, ids=attrgetter("name"))
+def test_cli_add_backup_changed(case):
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        thefile = Path("file.txt")
+        thefile.write_text(case.input)
+        r = runner.invoke(
+            main,
+            ["add"] + case.options + ["--backup", case.line, "file.txt"],
+            standalone_mode=False,
+        )
+        assert r.exit_code == 0, show_result(r)
+        assert r.output == ''
+        if case.changed:
+            assert sorted(os.listdir()) == ["file.txt", "file.txt~"]
+            assert Path("file.txt~").read_text() == case.input
+        else:
+            assert os.listdir() == ["file.txt"]
+        assert thefile.read_text() == case.output
+
+@pytest.mark.parametrize('case', FILE_ADD_LINE_CASES, ids=attrgetter("name"))
+def test_cli_add_backup_changed_custom_ext(case):
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        thefile = Path("file.txt")
+        thefile.write_text(case.input)
+        r = runner.invoke(
+            main,
+            ["add"] + case.options + ["--backup", "-i.bak", case.line, "file.txt"],
+            standalone_mode=False,
+        )
+        assert r.exit_code == 0, show_result(r)
+        assert r.output == ''
+        if case.changed:
+            assert sorted(os.listdir()) == ["file.txt", "file.txt.bak"]
+            assert Path("file.txt.bak").read_text() == case.input
+        else:
+            assert os.listdir() == ["file.txt"]
+        assert thefile.read_text() == case.output
+
+@pytest.mark.parametrize('case', FILE_ADD_LINE_CASES, ids=attrgetter("name"))
+def test_cli_add_backup_ext(case):
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        thefile = Path("file.txt")
+        thefile.write_text(case.input)
+        r = runner.invoke(
+            main,
+            ["add"] + case.options + ["-i.bak", case.line, "file.txt"],
+            standalone_mode=False,
+        )
+        assert r.exit_code == 0, show_result(r)
+        assert r.output == ''
+        if case.changed:
+            assert sorted(os.listdir()) == ["file.txt", "file.txt.bak"]
+            assert Path("file.txt.bak").read_text() == case.input
+        else:
+            assert os.listdir() == ["file.txt"]
+        assert thefile.read_text() == case.output
+
+@pytest.mark.parametrize('case', FILE_ADD_LINE_CASES, ids=attrgetter("name"))
+def test_cli_add_backup_always(case):
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        thefile = Path("file.txt")
+        thefile.write_text(case.input)
+        r = runner.invoke(
+            main,
+            ["add"] + case.options + ["--backup-always", case.line, "file.txt"],
+            standalone_mode=False,
+        )
+        assert r.exit_code == 0, show_result(r)
+        assert r.output == ''
+        assert sorted(os.listdir()) == ["file.txt", "file.txt~"]
+        assert Path("file.txt~").read_text() == case.input
+        assert thefile.read_text() == case.output
+
+@pytest.mark.parametrize('case', FILE_ADD_LINE_CASES, ids=attrgetter("name"))
+def test_cli_add_backup_always_custom_ext(case, tmp_path):
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        thefile = Path("file.txt")
+        thefile.write_text(case.input)
+        r = runner.invoke(
+            main,
+            ["add"] + case.options + [
+                "--backup-always", "-i.bak", case.line, "file.txt",
+            ],
+            standalone_mode=False,
+        )
+        assert r.exit_code == 0, show_result(r)
+        assert r.output == ''
+        assert sorted(os.listdir()) == ["file.txt", "file.txt.bak"]
+        assert Path("file.txt.bak").read_text() == case.input
+        assert thefile.read_text() == case.output
