@@ -30,6 +30,8 @@ Write a Python command & library based on the Ansible module of the same name
             - -M, --match-last — causes the last line matching the regexp to be
               replaced; default
             - -o, --outfile — incompatible with backup options
+            - Add an `-L <line>` option for specifying the line in case it
+              begins with a hyphen.
     - `lineinfile remove [<options>] <regexp> [<file>]`
         - Options:
             - [backup options from `add`]

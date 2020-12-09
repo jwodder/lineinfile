@@ -267,6 +267,7 @@ CLI_DEFAULTS = {
     (["--backup-always"], {"backup": ALWAYS}),
     (["--backup-always", "-i.bak"], {"backup": ALWAYS, "backup_ext": ".bak"}),
     (["-i.bak", "--backup-always"], {"backup": ALWAYS, "backup_ext": ".bak"}),
+    (["--create"], {"create": True}),
 ])
 def test_cli_add(case, backup_opts, backup_args, mocker):
     runner = CliRunner()
@@ -287,3 +288,24 @@ def test_cli_add(case, backup_opts, backup_args, mocker):
     if args["regexp"] is not None and not isinstance(args["regexp"], str):
         args["regexp"] = args["regexp"].pattern
     add_line_mock.assert_called_once_with("file.txt", case.line, **args)
+
+@pytest.mark.parametrize('backup_opts,backup_args', [
+    ([], {}),
+    (["--create"], {"create": True}),
+])
+def test_cli_add_file_not_exists_no_error(backup_opts, backup_args, mocker):
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        add_line_mock = mocker.patch(
+            'lineinfile.__main__.add_line_to_file',
+            return_value=True,
+        )
+        r = runner.invoke(
+            main,
+            ["add"] + backup_opts + ["gnusto=cleesh", "file.txt"],
+            standalone_mode=False,
+        )
+    assert r.exit_code == 0, show_result(r)
+    assert r.output == ''
+    args = {**CLI_DEFAULTS, **backup_args}
+    add_line_mock.assert_called_once_with("file.txt", "gnusto=cleesh", **args)
