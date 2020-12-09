@@ -400,3 +400,21 @@ def test_cli_add_backrefs_no_regex(mocker):
     assert isinstance(r.exception, click.UsageError)
     assert str(r.exception) == "--backrefs cannot be specified without --regexp"
     add_line_mock.assert_not_called()
+
+def test_cli_add_empty_backup_ext(mocker):
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        Path("file.txt").touch()
+        add_line_mock = mocker.patch(
+            'lineinfile.__main__.add_line_to_file',
+            return_value=True,
+        )
+        r = runner.invoke(
+            main,
+            ["add", "--backup-ext=", "gnusto=cleesh", "file.txt"],
+            standalone_mode=False,
+        )
+    assert r.exit_code != 0
+    assert isinstance(r.exception, click.UsageError)
+    assert str(r.exception) == "--backup-ext cannot be empty"
+    add_line_mock.assert_not_called()
