@@ -1,9 +1,13 @@
-from   collections import namedtuple
-from   operator    import attrgetter
-from   pathlib     import Path
+from   collections         import namedtuple
+from   operator            import attrgetter
+from   pathlib             import Path
+from   traceback           import format_exception
+import click
+from   click.testing       import CliRunner
 import pytest
-from   lineinfile  import ALWAYS, CHANGED, remove_lines_from_file, \
-                            remove_lines_from_string
+from   lineinfile          import ALWAYS, CHANGED, remove_lines_from_file, \
+                                remove_lines_from_string
+from   lineinfile.__main__ import main
 
 CASES_DIR = Path(__file__).with_name('data') / 'remove_lines'
 
@@ -38,6 +42,12 @@ def remove_lines_cases():
 
 def listdir(dirpath):
     return sorted(p.name for p in dirpath.iterdir())
+
+def show_result(r):
+    if r.exception is not None:
+        return ''.join(format_exception(*r.exc_info))
+    else:
+        return r.output
 
 REMOVE_LINES_CASES = list(remove_lines_cases())
 
@@ -171,3 +181,59 @@ def test_backup_symlink_no_change(tmp_path):
     assert not (tmp_path / "link.txt.bak").is_symlink()
     assert (tmp_path / "link.txt.bak").read_text() == NO_CHANGE_CASE.input
     assert thefile.read_text() == NO_CHANGE_CASE.output
+
+CLI_DEFAULTS = {
+    "backup": None,
+    "backup_ext": None,
+    #"create": False,
+}
+
+@pytest.mark.parametrize('opts,args', [
+    ([], {}),
+    (["--backup"], {"backup": CHANGED}),
+    (["--backup-changed"], {"backup": CHANGED}),
+    (["--backup", "-i.bak"], {"backup": CHANGED, "backup_ext": ".bak"}),
+    (["-i.bak"], {"backup": CHANGED, "backup_ext": ".bak"}),
+    (["--backup-ext=.bak"], {"backup": CHANGED, "backup_ext": ".bak"}),
+    (["--backup-always"], {"backup": ALWAYS}),
+    (["--backup-always", "-i.bak"], {"backup": ALWAYS, "backup_ext": ".bak"}),
+    (["-i.bak", "--backup-always"], {"backup": ALWAYS, "backup_ext": ".bak"}),
+    (["--backup-changed", "--backup-always"], {"backup": ALWAYS}),
+    (["--backup-always", "--backup-changed"], {"backup": CHANGED}),
+    #(["--create"], {"create": True}),
+])
+def test_cli_remove(opts, args, mocker):
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        Path("file.txt").touch()
+        remove_lines_mock = mocker.patch(
+            'lineinfile.__main__.remove_lines_from_file',
+            return_value=True,
+        )
+        r = runner.invoke(
+            main,
+            ["remove"] + opts + ["^foo=", "file.txt"],
+            standalone_mode=False,
+        )
+    assert r.exit_code == 0, show_result(r)
+    assert r.output == ''
+    fargs = {**CLI_DEFAULTS, **args}
+    remove_lines_mock.assert_called_once_with("file.txt", "^foo=", **fargs)
+
+def test_cli_remove_empty_backup_ext(mocker):
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        Path("file.txt").touch()
+        remove_lines_mock = mocker.patch(
+            'lineinfile.__main__.remove_lines_from_file',
+            return_value=True,
+        )
+        r = runner.invoke(
+            main,
+            ["remove", "--backup-ext=", "^foo=", "file.txt"],
+            standalone_mode=False,
+        )
+    assert r.exit_code != 0
+    assert isinstance(r.exception, click.UsageError)
+    assert str(r.exception) == "--backup-ext cannot be empty"
+    remove_lines_mock.assert_not_called()
