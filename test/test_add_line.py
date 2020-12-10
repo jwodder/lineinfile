@@ -449,3 +449,35 @@ def test_cli_add_stdin(case, input_args, mocker):
         args["regexp"] = args["regexp"].pattern
     add_line_file_mock.assert_not_called()
     add_line_str_mock.assert_called_once_with(case.input, case.line, **args)
+
+@pytest.mark.parametrize('input_args', [[], ["-"]])
+@pytest.mark.parametrize('file_arg,err_arg', [
+    ("--backup", "--backup-changed"),
+    ("--backup-changed", "--backup-changed"),
+    ("--backup-always", "--backup-always"),
+    ("-i.bak", "--backup-ext"),
+    ("--create", "--create"),
+])
+def test_cli_add_stdin_bad_file_args(file_arg, err_arg, input_args, mocker):
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        Path("file.txt").touch()
+        add_line_file_mock = mocker.patch(
+            'lineinfile.__main__.add_line_to_file',
+        )
+        add_line_str_mock = mocker.patch(
+            'lineinfile.__main__.add_line_to_string',
+        )
+        r = runner.invoke(
+            main,
+            ["add", file_arg, "gnusto=cleesh"] + input_args,
+            input='This is test text.\n',
+            standalone_mode=False,
+        )
+    assert r.exit_code != 0
+    assert isinstance(r.exception, click.UsageError)
+    assert str(r.exception) == (
+        f"{err_arg} cannot be set when reading from standard input."
+    )
+    add_line_file_mock.assert_not_called()
+    add_line_str_mock.assert_not_called()

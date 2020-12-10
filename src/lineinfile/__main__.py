@@ -95,6 +95,22 @@ def add(
     if backup_ext == "":
         raise click.UsageError("--backup-ext cannot be empty")
     if file is None or file == "-":
+        if backup_ext is not None:
+            raise click.UsageError(
+                "--backup-ext cannot be set when reading from standard input."
+            )
+        if backup is CHANGED:
+            raise click.UsageError(
+                "--backup-changed cannot be set when reading from standard input."
+            )
+        if backup is ALWAYS:
+            raise click.UsageError(
+                "--backup-always cannot be set when reading from standard input."
+            )
+        if create:
+            raise click.UsageError(
+                "--create cannot be set when reading from standard input."
+            )
         before = click.get_text_stream("stdin").read()
         after = add_line_to_string(
             before,
