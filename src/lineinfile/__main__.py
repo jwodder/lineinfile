@@ -2,7 +2,8 @@ from   typing import Any, Optional, TYPE_CHECKING
 import click
 from   .      import (
     ALWAYS, AfterFirst, AfterLast, AtBOF, AtEOF, BackupWhen, BeforeFirst,
-    BeforeLast, CHANGED, __version__, add_line_to_file, remove_lines_from_file,
+    BeforeLast, CHANGED, __version__, add_line_to_file, add_line_to_string,
+    remove_lines_from_file,
 )
 
 if TYPE_CHECKING:
@@ -71,10 +72,14 @@ def main() -> None:
 @click.option('-c', '--create', is_flag=True)
 @click.option('-m/-M', '--match-first/--match-last', default=False)
 @click.argument('line')
-@click.argument('file', type=click.Path(dir_okay=False, writable=True))
+@click.argument(
+    'file',
+    type=click.Path(dir_okay=False, writable=True, allow_dash=True),
+    required=False,
+)
 def add(
     line: str,
-    file: str,
+    file: Optional[str],
     regexp: Optional[str],
     backrefs: bool,
     backup: Optional[BackupWhen],
@@ -89,17 +94,29 @@ def add(
         raise click.UsageError("--backrefs cannot be specified without --regexp")
     if backup_ext == "":
         raise click.UsageError("--backup-ext cannot be empty")
-    add_line_to_file(
-        file,
-        line,
-        regexp=regexp,
-        locator=locator,
-        match_first=match_first,
-        backrefs=backrefs,
-        backup=backup,
-        backup_ext=backup_ext,
-        create=create,
-    )
+    if file is None or file == "-":
+        before = click.get_text_stream("stdin").read()
+        after = add_line_to_string(
+            before,
+            line,
+            regexp=regexp,
+            locator=locator,
+            match_first=match_first,
+            backrefs=backrefs,
+        )
+        click.echo(after, nl=False, color=True)
+    else:
+        add_line_to_file(
+            file,
+            line,
+            regexp=regexp,
+            locator=locator,
+            match_first=match_first,
+            backrefs=backrefs,
+            backup=backup,
+            backup_ext=backup_ext,
+            create=create,
+        )
 
 @main.command()
 @click.option('--backup', '--backup-changed', 'backup', flag_value=CHANGED)

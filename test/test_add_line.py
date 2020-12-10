@@ -418,3 +418,34 @@ def test_cli_add_empty_backup_ext(mocker):
     assert isinstance(r.exception, click.UsageError)
     assert str(r.exception) == "--backup-ext cannot be empty"
     add_line_mock.assert_not_called()
+
+@pytest.mark.parametrize('case', file_add_line_cases(), ids=attrgetter("name"))
+@pytest.mark.parametrize('input_args', [[], ["-"]])
+def test_cli_add_stdin(case, input_args, mocker):
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        Path("-").touch()
+        add_line_file_mock = mocker.patch(
+            'lineinfile.__main__.add_line_to_file',
+            return_value=case.changed,
+        )
+        add_line_str_mock = mocker.patch(
+            'lineinfile.__main__.add_line_to_string',
+            return_value=case.output,
+        )
+        r = runner.invoke(
+            main,
+            ["add"] + case.options + [case.line] + input_args,
+            input=case.input,
+            standalone_mode=False,
+        )
+    assert r.exit_code == 0, show_result(r)
+    assert r.output == case.output
+    args = {**CLI_DEFAULTS, **case.args}
+    args.pop("backup")
+    args.pop("backup_ext")
+    args.pop("create")
+    if args["regexp"] is not None and not isinstance(args["regexp"], str):
+        args["regexp"] = args["regexp"].pattern
+    add_line_file_mock.assert_not_called()
+    add_line_str_mock.assert_called_once_with(case.input, case.line, **args)
