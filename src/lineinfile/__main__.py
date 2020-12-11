@@ -120,7 +120,8 @@ def add(
             match_first=match_first,
             backrefs=backrefs,
         )
-        click.echo(after, nl=False, color=True)
+        # Don't use click.echo(), as it modifies ANSI sequences on Windows
+        print(after, end='')
     else:
         add_line_to_file(
             file,
@@ -175,7 +176,8 @@ def remove(
         #    )
         before = click.get_text_stream("stdin").read()
         after = remove_lines_from_string(before, regexp)
-        click.echo(after, nl=False, color=True)
+        # Don't use click.echo(), as it modifies ANSI sequences on Windows
+        print(after, end='')
     else:
         remove_lines_from_file(
             file,
