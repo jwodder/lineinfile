@@ -262,3 +262,35 @@ def test_cli_remove_stdin(input_args, mocker):
     assert r.output == output
     remove_lines_file_mock.assert_not_called()
     remove_lines_str_mock.assert_called_once_with(INPUT, "^foo=")
+
+@pytest.mark.parametrize('input_args', [[], ["-"]])
+@pytest.mark.parametrize('file_arg,err_arg', [
+    ("--backup", "--backup-changed"),
+    ("--backup-changed", "--backup-changed"),
+    ("--backup-always", "--backup-always"),
+    ("-i.bak", "--backup-ext"),
+    #("--create", "--create"),
+])
+def test_cli_remove_stdin_bad_file_args(file_arg, err_arg, input_args, mocker):
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        Path("file.txt").touch()
+        remove_lines_file_mock = mocker.patch(
+            'lineinfile.__main__.remove_lines_from_file',
+        )
+        remove_lines_str_mock = mocker.patch(
+            'lineinfile.__main__.remove_lines_from_string',
+        )
+        r = runner.invoke(
+            main,
+            ["remove", file_arg, "^gnusto="] + input_args,
+            input='This is test text.\n',
+            standalone_mode=False,
+        )
+    assert r.exit_code != 0
+    assert isinstance(r.exception, click.UsageError)
+    assert str(r.exception) == (
+        f"{err_arg} cannot be set when reading from standard input."
+    )
+    remove_lines_file_mock.assert_not_called()
+    remove_lines_str_mock.assert_not_called()
