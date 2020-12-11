@@ -237,3 +237,28 @@ def test_cli_remove_empty_backup_ext(mocker):
     assert isinstance(r.exception, click.UsageError)
     assert str(r.exception) == "--backup-ext cannot be empty"
     remove_lines_mock.assert_not_called()
+
+@pytest.mark.parametrize('input_args', [[], ["-"]])
+def test_cli_remove_stdin(input_args, mocker):
+    runner = CliRunner()
+    output = remove_lines_from_string(INPUT, "^foo=")
+    with runner.isolated_filesystem():
+        Path("-").touch()
+        remove_lines_file_mock = mocker.patch(
+            'lineinfile.__main__.remove_lines_from_file',
+            return_value=True,
+        )
+        remove_lines_str_mock = mocker.patch(
+            'lineinfile.__main__.remove_lines_from_string',
+            return_value=output,
+        )
+        r = runner.invoke(
+            main,
+            ["remove", "^foo="] + input_args,
+            input=INPUT,
+            standalone_mode=False,
+        )
+    assert r.exit_code == 0, show_result(r)
+    assert r.output == output
+    remove_lines_file_mock.assert_not_called()
+    remove_lines_str_mock.assert_called_once_with(INPUT, "^foo=")

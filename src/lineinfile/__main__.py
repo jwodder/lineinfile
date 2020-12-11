@@ -3,7 +3,7 @@ import click
 from   .      import (
     ALWAYS, AfterFirst, AfterLast, AtBOF, AtEOF, BackupWhen, BeforeFirst,
     BeforeLast, CHANGED, __version__, add_line_to_file, add_line_to_string,
-    remove_lines_from_file,
+    remove_lines_from_file, remove_lines_from_string,
 )
 
 if TYPE_CHECKING:
@@ -140,10 +140,14 @@ def add(
 @click.option('-i', '--backup-ext', metavar='EXT')
 #@click.option('-c', '--create', is_flag=True)
 @click.argument('regexp')
-@click.argument('file', type=click.Path(exists=True, dir_okay=False, writable=True))
+@click.argument(
+    'file',
+    type=click.Path(dir_okay=False, writable=True, allow_dash=True),
+    required=False,
+)
 def remove(
     regexp: str,
-    file: str,
+    file: Optional[str],
     backup: Optional[BackupWhen],
     backup_ext: Optional[str],
     #create: bool,
@@ -152,13 +156,18 @@ def remove(
         backup = CHANGED
     if backup_ext == "":
         raise click.UsageError("--backup-ext cannot be empty")
-    remove_lines_from_file(
-        file,
-        regexp,
-        backup=backup,
-        backup_ext=backup_ext,
-        #create=create,
-    )
+    if file is None or file == "-":
+        before = click.get_text_stream("stdin").read()
+        after = remove_lines_from_string(before, regexp)
+        click.echo(after, nl=False, color=True)
+    else:
+        remove_lines_from_file(
+            file,
+            regexp,
+            backup=backup,
+            backup_ext=backup_ext,
+            #create=create,
+        )
 
 if __name__ == '__main__':
     main()  # pragma: no cover
