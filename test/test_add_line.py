@@ -579,3 +579,31 @@ def test_cli_add_outfile_stdout(case, mocker):
         args["regexp"] = args["regexp"].pattern
     add_line_file_mock.assert_not_called()
     add_line_str_mock.assert_called_once_with(case.input, case.line, **args)
+
+@pytest.mark.parametrize('file_arg,err_arg', [
+    ("--backup", "--backup-changed"),
+    ("--backup-changed", "--backup-changed"),
+    ("--backup-always", "--backup-always"),
+    ("-i.bak", "--backup-ext"),
+    ("--create", "--create"),
+])
+def test_cli_add_outfile_bad_file_args(file_arg, err_arg, mocker):
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        Path("file.txt").touch()
+        add_line_file_mock = mocker.patch(
+            'lineinfile.__main__.add_line_to_file',
+        )
+        add_line_str_mock = mocker.patch(
+            'lineinfile.__main__.add_line_to_string',
+        )
+        r = runner.invoke(
+            main,
+            ["add", "-o", "out.txt", file_arg, "gnusto=cleesh", "file.txt"],
+            standalone_mode=False,
+        )
+    assert r.exit_code != 0
+    assert isinstance(r.exception, click.UsageError)
+    assert str(r.exception) == f"{err_arg} is incompatible with --outfile."
+    add_line_file_mock.assert_not_called()
+    add_line_str_mock.assert_not_called()

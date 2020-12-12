@@ -97,22 +97,18 @@ def add(
     if backup_ext == "":
         raise click.UsageError("--backup-ext cannot be empty")
     if file == "-" or outfile is not None:
+        if file == "-":
+            errmsg = "{option} cannot be set when reading from standard input."
+        else:
+            errmsg = "{option} is incompatible with --outfile."
         if backup_ext is not None:
-            raise click.UsageError(
-                "--backup-ext cannot be set when reading from standard input."
-            )
+            raise click.UsageError(errmsg.format(option="--backup-ext"))
         if backup is CHANGED:
-            raise click.UsageError(
-                "--backup-changed cannot be set when reading from standard input."
-            )
+            raise click.UsageError(errmsg.format(option="--backup-changed"))
         if backup is ALWAYS:
-            raise click.UsageError(
-                "--backup-always cannot be set when reading from standard input."
-            )
+            raise click.UsageError(errmsg.format(option="--backup-always"))
         if create:
-            raise click.UsageError(
-                "--create cannot be set when reading from standard input."
-            )
+            raise click.UsageError(errmsg.format(option="--create"))
         with click.open_file(file) as fp:
             before = fp.read()
         after = add_line_to_string(
