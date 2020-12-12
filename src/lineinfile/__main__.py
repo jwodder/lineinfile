@@ -1,7 +1,6 @@
-from   pathlib import Path
-from   typing  import Any, Optional, TYPE_CHECKING, TextIO
+from   typing import Any, Optional, TYPE_CHECKING, TextIO
 import click
-from   .       import (
+from   .      import (
     ALWAYS, AfterFirst, AfterLast, AtBOF, AtEOF, BackupWhen, BeforeFirst,
     BeforeLast, CHANGED, __version__, add_line_to_file, add_line_to_string,
     remove_lines_from_file, remove_lines_from_string,
@@ -77,11 +76,11 @@ def main() -> None:
 @click.argument(
     'file',
     type=click.Path(dir_okay=False, writable=True, allow_dash=True),
-    required=False,
+    default="-",
 )
 def add(
     line: str,
-    file: Optional[str],
+    file: str,
     regexp: Optional[str],
     backrefs: bool,
     backup: Optional[BackupWhen],
@@ -97,7 +96,7 @@ def add(
         raise click.UsageError("--backrefs cannot be specified without --regexp")
     if backup_ext == "":
         raise click.UsageError("--backup-ext cannot be empty")
-    if file is None or file == "-" or outfile is not None:
+    if file == "-" or outfile is not None:
         if backup_ext is not None:
             raise click.UsageError(
                 "--backup-ext cannot be set when reading from standard input."
@@ -114,10 +113,8 @@ def add(
             raise click.UsageError(
                 "--create cannot be set when reading from standard input."
             )
-        if file is None or file == "-":
-            before = click.get_text_stream("stdin").read()
-        else:
-            before = Path(file).read_text()
+        with click.open_file(file) as fp:
+            before = fp.read()
         after = add_line_to_string(
             before,
             line,
@@ -154,11 +151,11 @@ def add(
 @click.argument(
     'file',
     type=click.Path(dir_okay=False, writable=True, allow_dash=True),
-    required=False,
+    default="-",
 )
 def remove(
     regexp: str,
-    file: Optional[str],
+    file: str,
     backup: Optional[BackupWhen],
     backup_ext: Optional[str],
     #create: bool,
@@ -167,7 +164,7 @@ def remove(
         backup = CHANGED
     if backup_ext == "":
         raise click.UsageError("--backup-ext cannot be empty")
-    if file is None or file == "-":
+    if file == "-":
         if backup_ext is not None:
             raise click.UsageError(
                 "--backup-ext cannot be set when reading from standard input."
