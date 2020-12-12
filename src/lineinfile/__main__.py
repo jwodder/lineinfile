@@ -1,6 +1,7 @@
-from   typing import Any, Optional, TYPE_CHECKING
+from   pathlib import Path
+from   typing  import Any, Optional, TYPE_CHECKING, TextIO
 import click
-from   .      import (
+from   .       import (
     ALWAYS, AfterFirst, AfterLast, AtBOF, AtEOF, BackupWhen, BeforeFirst,
     BeforeLast, CHANGED, __version__, add_line_to_file, add_line_to_string,
     remove_lines_from_file, remove_lines_from_string,
@@ -71,6 +72,7 @@ def main() -> None:
 @click.option('-i', '--backup-ext', metavar='EXT')
 @click.option('-c', '--create', is_flag=True)
 @click.option('-m/-M', '--match-first/--match-last', default=False)
+@click.option('-o', '--outfile', type=click.File("w"))
 @click.argument('line')
 @click.argument(
     'file',
@@ -87,6 +89,7 @@ def add(
     create: bool,
     match_first: bool,
     locator: Optional["Locator"] = None,
+    outfile: Optional[TextIO] = None,
 ) -> None:
     if backup_ext is not None and backup is None:
         backup = CHANGED
@@ -94,7 +97,7 @@ def add(
         raise click.UsageError("--backrefs cannot be specified without --regexp")
     if backup_ext == "":
         raise click.UsageError("--backup-ext cannot be empty")
-    if file is None or file == "-":
+    if file is None or file == "-" or outfile is not None:
         if backup_ext is not None:
             raise click.UsageError(
                 "--backup-ext cannot be set when reading from standard input."
@@ -111,7 +114,10 @@ def add(
             raise click.UsageError(
                 "--create cannot be set when reading from standard input."
             )
-        before = click.get_text_stream("stdin").read()
+        if file is None or file == "-":
+            before = click.get_text_stream("stdin").read()
+        else:
+            before = Path(file).read_text()
         after = add_line_to_string(
             before,
             line,
@@ -120,8 +126,12 @@ def add(
             match_first=match_first,
             backrefs=backrefs,
         )
+        if outfile is None:
+            outfp = click.get_text_stream("stdout")
+        else:
+            outfp = outfile
         # Don't use click.echo(), as it modifies ANSI sequences on Windows
-        print(after, end='')
+        print(after, end='', file=outfp)
     else:
         add_line_to_file(
             file,

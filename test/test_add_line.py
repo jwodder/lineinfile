@@ -1,5 +1,6 @@
 from   collections         import namedtuple
 from   operator            import attrgetter
+import os
 from   pathlib             import Path
 from   traceback           import format_exception
 import click
@@ -481,3 +482,69 @@ def test_cli_add_stdin_bad_file_args(file_arg, err_arg, input_args, mocker):
     )
     add_line_file_mock.assert_not_called()
     add_line_str_mock.assert_not_called()
+
+@pytest.mark.parametrize('case', file_add_line_cases(), ids=attrgetter("name"))
+def test_cli_add_outfile(case, mocker):
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        thefile = Path("file.txt")
+        thefile.write_text(case.input)
+        add_line_file_mock = mocker.patch(
+            'lineinfile.__main__.add_line_to_file',
+        )
+        add_line_str_mock = mocker.patch(
+            'lineinfile.__main__.add_line_to_string',
+            return_value=case.output,
+        )
+        r = runner.invoke(
+            main,
+            ["add"] + case.options + ["--outfile=out.txt", case.line, "file.txt"],
+            standalone_mode=False,
+        )
+        assert r.exit_code == 0, show_result(r)
+        assert r.output == ''
+        assert sorted(os.listdir()) == ["file.txt", "out.txt"]
+        assert thefile.read_text() == case.input
+        assert Path("out.txt").read_text() == case.output
+    args = {**CLI_DEFAULTS, **case.args}
+    args.pop("backup")
+    args.pop("backup_ext")
+    args.pop("create")
+    if args["regexp"] is not None and not isinstance(args["regexp"], str):
+        args["regexp"] = args["regexp"].pattern
+    add_line_file_mock.assert_not_called()
+    add_line_str_mock.assert_called_once_with(case.input, case.line, **args)
+
+@pytest.mark.parametrize('case', file_add_line_cases(), ids=attrgetter("name"))
+@pytest.mark.parametrize('input_args', [[], ["-"]])
+def test_cli_add_stdin_output(case, input_args, mocker):
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        Path("-").touch()
+        add_line_file_mock = mocker.patch(
+            'lineinfile.__main__.add_line_to_file',
+            return_value=case.changed,
+        )
+        add_line_str_mock = mocker.patch(
+            'lineinfile.__main__.add_line_to_string',
+            return_value=case.output,
+        )
+        r = runner.invoke(
+            main,
+            ["add"] + case.options + ["-oout.txt", case.line] + input_args,
+            input=case.input,
+            standalone_mode=False,
+        )
+        assert r.exit_code == 0, show_result(r)
+        assert r.output == ''
+        assert sorted(os.listdir()) == ["-", "out.txt"]
+        assert Path("-").read_text() == ''
+        assert Path("out.txt").read_text() == case.output
+    args = {**CLI_DEFAULTS, **case.args}
+    args.pop("backup")
+    args.pop("backup_ext")
+    args.pop("create")
+    if args["regexp"] is not None and not isinstance(args["regexp"], str):
+        args["regexp"] = args["regexp"].pattern
+    add_line_file_mock.assert_not_called()
+    add_line_str_mock.assert_called_once_with(case.input, case.line, **args)
