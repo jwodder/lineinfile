@@ -25,6 +25,22 @@ __author_email__ = 'lineinfile@varonathe.org'
 __license__      = 'MIT'
 __url__          = 'https://github.com/jwodder/lineinfile'
 
+__all__ = [
+    "ALWAYS",
+    "AfterFirst",
+    "AfterLast",
+    "AtBOF",
+    "AtEOF",
+    "BackupWhen",
+    "BeforeFirst",
+    "BeforeLast",
+    "CHANGED",
+    "add_line_to_file",
+    "add_line_to_string",
+    "remove_lines_from_file",
+    "remove_lines_from_string",
+]
+
 from   enum    import Enum
 import os
 from   pathlib import Path
