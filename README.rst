@@ -3,6 +3,13 @@
     :alt: Project Status: WIP — Initial development is in progress, but there
           has not yet been a stable, usable release suitable for the public.
 
+.. image:: https://github.com/jwodder/lineinfile/workflows/Test/badge.svg?branch=master
+    :target: https://github.com/jwodder/lineinfile/actions?workflow=Test
+    :alt: CI Status
+
+.. image:: https://codecov.io/gh/jwodder/lineinfile/branch/master/graph/badge.svg
+    :target: https://codecov.io/gh/jwodder/lineinfile
+
 .. image:: https://img.shields.io/github/license/jwodder/lineinfile.svg
     :target: https://opensource.org/licenses/MIT
     :alt: MIT License
