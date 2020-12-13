@@ -1,6 +1,21 @@
 """
 Add & remove lines in files by regex
 
+Inspired by (but not affiliated with) `the Ansible module of the same name`__,
+``lineinfile`` provides a command and library for adding a line to a file if
+it's not already there and for removing lines matching a pattern from a file.
+There are options for using a regex to find a line to update or to determine
+which line to insert before or after.  There are options for backing up the
+modified file with a custom file extension and for treating a nonexistent file
+as though it's just empty.  There's even an option for determining the line to
+insert based on capturing groups in the matching regex.
+
+__ https://docs.ansible.com/ansible/latest/collections/ansible/builtin/
+   lineinfile_module.html
+
+Unlike the Ansible module, this package does not perform any management of file
+attributes; those must be set externally.
+
 Visit <https://github.com/jwodder/lineinfile> for more information.
 """
 
