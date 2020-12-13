@@ -348,3 +348,81 @@ def test_cli_remove_stdin_outfile(input_args, mocker):
         assert Path("out.txt").read_text() == output
     remove_lines_file_mock.assert_not_called()
     remove_lines_str_mock.assert_called_once_with(INPUT, "^foo=")
+
+def test_cli_remove_outfile_stdout(mocker):
+    runner = CliRunner()
+    output = remove_lines_from_string(INPUT, "^foo=")
+    with runner.isolated_filesystem():
+        thefile = Path("file.txt")
+        thefile.write_text(INPUT)
+        remove_lines_file_mock = mocker.patch(
+            'lineinfile.__main__.remove_lines_from_file',
+        )
+        remove_lines_str_mock = mocker.patch(
+            'lineinfile.__main__.remove_lines_from_string',
+            return_value=output,
+        )
+        r = runner.invoke(
+            main,
+            ["remove", "--outfile", "-", "^foo=", "file.txt"],
+            standalone_mode=False,
+        )
+        assert r.exit_code == 0, show_result(r)
+        assert r.output == output
+        assert os.listdir() == ["file.txt"]
+        assert thefile.read_text() == INPUT
+    remove_lines_file_mock.assert_not_called()
+    remove_lines_str_mock.assert_called_once_with(INPUT, "^foo=")
+
+@pytest.mark.parametrize('file_arg,err_arg', [
+    ("--backup", "--backup-changed"),
+    ("--backup-changed", "--backup-changed"),
+    ("--backup-always", "--backup-always"),
+    ("-i.bak", "--backup-ext"),
+    #("--create", "--create"),
+])
+def test_cli_remove_outfile_bad_file_args(file_arg, err_arg, mocker):
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        Path("file.txt").touch()
+        remove_lines_file_mock = mocker.patch(
+            'lineinfile.__main__.remove_lines_from_file',
+        )
+        remove_lines_str_mock = mocker.patch(
+            'lineinfile.__main__.remove_lines_from_string',
+        )
+        r = runner.invoke(
+            main,
+            ["remove", "-o", "out.txt", file_arg, "^foo=", "file.txt"],
+            standalone_mode=False,
+        )
+    assert r.exit_code != 0
+    assert isinstance(r.exception, click.UsageError)
+    assert str(r.exception) == f"{err_arg} is incompatible with --outfile."
+    remove_lines_file_mock.assert_not_called()
+    remove_lines_str_mock.assert_not_called()
+
+def test_cli_remove_outfile_is_infile(mocker):
+    runner = CliRunner()
+    output = remove_lines_from_string(INPUT, "^foo=")
+    with runner.isolated_filesystem():
+        thefile = Path("file.txt")
+        thefile.write_text(INPUT)
+        remove_lines_file_mock = mocker.patch(
+            'lineinfile.__main__.remove_lines_from_file',
+        )
+        remove_lines_str_mock = mocker.patch(
+            'lineinfile.__main__.remove_lines_from_string',
+            return_value=output,
+        )
+        r = runner.invoke(
+            main,
+            ["remove", "--outfile=file.txt", "^foo=", "file.txt"],
+            standalone_mode=False,
+        )
+        assert r.exit_code == 0, show_result(r)
+        assert r.output == ''
+        assert os.listdir() == ["file.txt"]
+        assert thefile.read_text() == output
+    remove_lines_file_mock.assert_not_called()
+    remove_lines_str_mock.assert_called_once_with(INPUT, "^foo=")
