@@ -1,5 +1,6 @@
 from   collections         import namedtuple
 from   operator            import attrgetter
+import os
 from   pathlib             import Path
 from   traceback           import format_exception
 import click
@@ -294,3 +295,56 @@ def test_cli_remove_stdin_bad_file_args(file_arg, err_arg, input_args, mocker):
     )
     remove_lines_file_mock.assert_not_called()
     remove_lines_str_mock.assert_not_called()
+
+def test_cli_remove_outfile(mocker):
+    runner = CliRunner()
+    output = remove_lines_from_string(INPUT, "^foo=")
+    with runner.isolated_filesystem():
+        thefile = Path("file.txt")
+        thefile.write_text(INPUT)
+        remove_lines_file_mock = mocker.patch(
+            'lineinfile.__main__.remove_lines_from_file',
+        )
+        remove_lines_str_mock = mocker.patch(
+            'lineinfile.__main__.remove_lines_from_string',
+            return_value=output,
+        )
+        r = runner.invoke(
+            main,
+            ["remove", "--outfile=out.txt", "^foo=", "file.txt"],
+            standalone_mode=False,
+        )
+        assert r.exit_code == 0, show_result(r)
+        assert r.output == ''
+        assert sorted(os.listdir()) == ["file.txt", "out.txt"]
+        assert thefile.read_text() == INPUT
+        assert Path("out.txt").read_text() == output
+    remove_lines_file_mock.assert_not_called()
+    remove_lines_str_mock.assert_called_once_with(INPUT, "^foo=")
+
+@pytest.mark.parametrize('input_args', [[], ["-"]])
+def test_cli_remove_stdin_outfile(input_args, mocker):
+    runner = CliRunner()
+    output = remove_lines_from_string(INPUT, "^foo=")
+    with runner.isolated_filesystem():
+        Path("-").touch()
+        remove_lines_file_mock = mocker.patch(
+            'lineinfile.__main__.remove_lines_from_file',
+        )
+        remove_lines_str_mock = mocker.patch(
+            'lineinfile.__main__.remove_lines_from_string',
+            return_value=output,
+        )
+        r = runner.invoke(
+            main,
+            ["remove", "-oout.txt", "^foo="] + input_args,
+            input=INPUT,
+            standalone_mode=False,
+        )
+        assert r.exit_code == 0, show_result(r)
+        assert r.output == ''
+        assert sorted(os.listdir()) == ["-", "out.txt"]
+        assert Path("-").read_text() == ''
+        assert Path("out.txt").read_text() == output
+    remove_lines_file_mock.assert_not_called()
+    remove_lines_str_mock.assert_called_once_with(INPUT, "^foo=")

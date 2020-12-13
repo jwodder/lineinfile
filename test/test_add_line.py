@@ -517,7 +517,7 @@ def test_cli_add_outfile(case, mocker):
 
 @pytest.mark.parametrize('case', file_add_line_cases(), ids=attrgetter("name"))
 @pytest.mark.parametrize('input_args', [[], ["-"]])
-def test_cli_add_stdin_output(case, input_args, mocker):
+def test_cli_add_stdin_outfile(case, input_args, mocker):
     runner = CliRunner()
     with runner.isolated_filesystem():
         Path("-").touch()

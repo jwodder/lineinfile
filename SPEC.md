@@ -105,7 +105,7 @@ Write a Python command & library based on the Ansible module of the same name
   expanded?
 
 - Should the library functions return structures containing information on
-  what, if anything, was changed?
+  what, if anything, was changed, the path to the backup, etc.?
 
 - idea: When `backrefs` is in effect, support passing the string to expand
   separately from the `line` (Pass it as the `backrefs` value?) so that a line

@@ -143,6 +143,7 @@ def add(
 @click.option('--backup-always', 'backup', flag_value=ALWAYS)
 @click.option('-i', '--backup-ext', metavar='EXT')
 #@click.option('-c', '--create', is_flag=True)
+@click.option('-o', '--outfile', type=click.File("w"))
 @click.argument('regexp')
 @click.argument(
     'file',
@@ -155,12 +156,13 @@ def remove(
     backup: Optional[BackupWhen],
     backup_ext: Optional[str],
     #create: bool,
+    outfile: Optional[TextIO] = None,
 ) -> None:
     if backup_ext is not None and backup is None:
         backup = CHANGED
     if backup_ext == "":
         raise click.UsageError("--backup-ext cannot be empty")
-    if file == "-":
+    if file == "-" or outfile is not None:
         if backup_ext is not None:
             raise click.UsageError(
                 "--backup-ext cannot be set when reading from standard input."
@@ -177,10 +179,15 @@ def remove(
         #    raise click.UsageError(
         #        "--create cannot be set when reading from standard input."
         #    )
-        before = click.get_text_stream("stdin").read()
+        with click.open_file(file) as fp:
+            before = fp.read()
         after = remove_lines_from_string(before, regexp)
+        if outfile is None:
+            outfp = click.get_text_stream("stdout")
+        else:
+            outfp = outfile
         # Don't use click.echo(), as it modifies ANSI sequences on Windows
-        print(after, end='')
+        print(after, end='', file=outfp)
     else:
         remove_lines_from_file(
             file,
