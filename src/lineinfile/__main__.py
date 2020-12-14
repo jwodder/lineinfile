@@ -21,6 +21,11 @@ def set_locator(ctx: click.Context, param: click.Parameter, value: Any) -> Any:
     message='lineinfile %(version)s',
 )
 def main() -> None:
+    """
+    Add & remove lines in files by regex.
+
+    Visit <https://github.com/jwodder/lineinfile> for more information.
+    """
     pass
 
 @main.command()
@@ -30,6 +35,7 @@ def main() -> None:
     type=AfterFirst,
     callback=set_locator,
     expose_value=False,
+    help="Insert LINE after the first line matching REGEX",
 )
 @click.option(
     '-A', '--after-last',
@@ -37,6 +43,7 @@ def main() -> None:
     type=AfterLast,
     callback=set_locator,
     expose_value=False,
+    help="Insert LINE after the last line matching REGEX",
 )
 @click.option(
     '-b', '--before-first',
@@ -44,6 +51,7 @@ def main() -> None:
     type=BeforeFirst,
     callback=set_locator,
     expose_value=False,
+    help="Insert LINE before the first line matching REGEX",
 )
 @click.option(
     '-B', '--before-last',
@@ -51,27 +59,62 @@ def main() -> None:
     type=BeforeLast,
     callback=set_locator,
     expose_value=False,
+    help="Insert LINE before the last line matching REGEX",
 )
 @click.option(
     '--bof',
     flag_value=AtBOF(),
     callback=set_locator,
     expose_value=False,
+    help="Insert LINE at the beginning of the file",
 )
 @click.option(
     '--eof',
     flag_value=AtEOF(),
     callback=set_locator,
     expose_value=False,
+    help="Insert LINE at the end of the file [default]",
 )
-@click.option('-e', '--regexp', metavar='REGEX')
-@click.option('--backrefs', is_flag=True)
-@click.option('--backup', '--backup-changed', 'backup', flag_value=CHANGED)
-@click.option('--backup-always', 'backup', flag_value=ALWAYS)
-@click.option('-i', '--backup-ext', metavar='EXT')
-@click.option('-c', '--create', is_flag=True)
-@click.option('-m/-M', '--match-first/--match-last', default=False)
-@click.option('-o', '--outfile', type=click.File("w"))
+@click.option(
+    '-e', '--regexp',
+    metavar='REGEX',
+    help="Replace the last line matching REGEX with LINE",
+)
+@click.option(
+    '--backrefs',
+    is_flag=True,
+    help="Use `--regexp` match to expand capturing groups in LINE",
+)
+@click.option(
+    '--backup', '--backup-changed', 'backup',
+    flag_value=CHANGED,
+    help="Backup file if modified",
+)
+@click.option(
+    '--backup-always', 'backup',
+    flag_value=ALWAYS,
+    help="Backup file whether modified or not"
+)
+@click.option(
+    '-i', '--backup-ext',
+    metavar='EXT',
+    help="Extension for backup file [default: ~]",
+)
+@click.option(
+    '-c', '--create',
+    is_flag=True,
+    help="Treat nonexistent FILE as empty",
+)
+@click.option(
+    '-m/-M', '--match-first/--match-last',
+    default=False,
+    help="`--regexp` replaces first/last matching line in input [default: last]",
+)
+@click.option(
+    '-o', '--outfile',
+    type=click.File("w"),
+    help="Write output to given file",
+)
 @click.argument('line')
 @click.argument(
     'file',
@@ -90,6 +133,23 @@ def add(
     locator: Optional["Locator"] = None,
     outfile: Optional[TextIO] = None,
 ) -> None:
+    """
+    Add LINE to FILE if it's not already present.
+
+    If a Python regular expression is given with the `-e`/`--regexp`
+    option and it matches any lines in the file, LINE will replace the last
+    matching line (or the first matching line, if `--match-first` is given).
+    If the regular expression does not match any lines (or no regular
+    expression is specified) and LINE is not found in the file, the line is
+    inserted at the end of the file by default; this can be changed with the
+    `--after-first`, `--after-last`, `--before-first`, `--before-last`,
+    and `--bof` options.
+
+    If no file name is given on the command line, input is read from standard
+    input, and the result is written to standard output.  It is an error to
+    specify any of the `--backup-changed`, `--backup-always`, `--backup-ext`,
+    or `--create` options when no file is given.
+    """
     if backup_ext is not None and backup is None:
         backup = CHANGED
     if backrefs and regexp is None:
@@ -139,11 +199,27 @@ def add(
         )
 
 @main.command()
-@click.option('--backup', '--backup-changed', 'backup', flag_value=CHANGED)
-@click.option('--backup-always', 'backup', flag_value=ALWAYS)
-@click.option('-i', '--backup-ext', metavar='EXT')
+@click.option(
+    '--backup', '--backup-changed', 'backup',
+    flag_value=CHANGED,
+    help="Backup file if modified",
+)
+@click.option(
+    '--backup-always', 'backup',
+    flag_value=ALWAYS,
+    help="Backup file whether modified or not"
+)
+@click.option(
+    '-i', '--backup-ext',
+    metavar='EXT',
+    help="Extension for backup file [default: ~]",
+)
 #@click.option('-c', '--create', is_flag=True)
-@click.option('-o', '--outfile', type=click.File("w"))
+@click.option(
+    '-o', '--outfile',
+    type=click.File("w"),
+    help="Write output to given file",
+)
 @click.argument('regexp')
 @click.argument(
     'file',
@@ -158,6 +234,14 @@ def remove(
     #create: bool,
     outfile: Optional[TextIO] = None,
 ) -> None:
+    """
+    Delete all lines from FILE that match REGEXP.
+
+    If no file name is given on the command line, input is read from standard
+    input, and the result is written to standard output.  It is an error to
+    specify any of the `--backup-changed`, `--backup-always`, or `--backup-ext`
+    options when no file is given.
+    """
     if backup_ext is not None and backup is None:
         backup = CHANGED
     if backup_ext == "":
