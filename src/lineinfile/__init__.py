@@ -61,7 +61,7 @@ if TYPE_CHECKING:
     else:
         from typing_extensions import Protocol
 
-    class Locator(Protocol):
+    class Inserter(Protocol):
         def feed(self, i: int, line: str) -> None:
             ...
 
@@ -99,7 +99,7 @@ class AtEOF:
             return NotImplemented
 
 
-class PatternLocator:
+class PatternInserter:
     def __init__(self, pattern: Patternish) -> None:
         self.pattern: Pattern[str] = ensure_compiled(pattern)
         self.i: Optional[int] = None
@@ -120,25 +120,25 @@ class PatternLocator:
         )
 
 
-class AfterFirst(PatternLocator):
+class AfterFirst(PatternInserter):
     def feed(self, i: int, line: str) -> None:
         if self.i is None and self.pattern.search(line):
             self.i = i+1
 
 
-class AfterLast(PatternLocator):
+class AfterLast(PatternInserter):
     def feed(self, i: int, line: str) -> None:
         if self.pattern.search(line):
             self.i = i+1
 
 
-class BeforeFirst(PatternLocator):
+class BeforeFirst(PatternInserter):
     def feed(self, i: int, line: str) -> None:
         if self.i is None and self.pattern.search(line):
             self.i = i
 
 
-class BeforeLast(PatternLocator):
+class BeforeLast(PatternInserter):
     def feed(self, i: int, line: str) -> None:
         if self.pattern.search(line):
             self.i = i
@@ -227,16 +227,16 @@ def add_line_to_string(
     s: str,
     line: str,
     regexp: Optional[Patternish] = None,
-    locator: Optional["Locator"] = None,
+    inserter: Optional["Inserter"] = None,
     match_first: bool = False,
     backrefs: bool = False,
 ) -> str:
-    line_matcher: "Locator"
+    line_matcher: "Inserter"
     if match_first:
         line_matcher = MatchLineFirst(line)
     else:
         line_matcher = MatchLineLast(line)
-    rgx: Optional["Locator"]
+    rgx: Optional["Inserter"]
     if regexp is None:
         rgx = None
         if backrefs:
@@ -245,13 +245,13 @@ def add_line_to_string(
         rgx = MatchFirst(regexp)
     else:
         rgx = MatchLast(regexp)
-    loccer = AtEOF() if locator is None else locator
+    ins = AtEOF() if inserter is None else inserter
     lines = ascii_splitlines(s)
     for i,ln in enumerate(lines):
         line_matcher.feed(i, ln)
         if rgx is not None:
             rgx.feed(i, ln)
-        loccer.feed(i, ln)
+        ins.feed(i, ln)
     match_point = None if rgx is None else rgx.get_index()
     if match_point is None:
         if backrefs:
@@ -264,7 +264,7 @@ def add_line_to_string(
             line = rgx.expand(line)
         lines[match_point] = ensure_terminated(line)
     else:
-        insert_point = loccer.get_index()
+        insert_point = ins.get_index()
         if insert_point is None:
             if lines:
                 lines[-1] = ensure_terminated(lines[-1])
@@ -279,7 +279,7 @@ def add_line_to_file(
     filepath: Union[str, os.PathLike],
     line: str,
     regexp: Optional[Patternish] = None,
-    locator: Optional["Locator"] = None,
+    inserter: Optional["Inserter"] = None,
     match_first: bool = False,
     backrefs: bool = False,
     backup: Optional[BackupWhen] = None,
@@ -304,7 +304,7 @@ def add_line_to_file(
         before,
         line,
         regexp=regexp,
-        locator=locator,
+        inserter=inserter,
         match_first=match_first,
         backrefs=backrefs,
     )

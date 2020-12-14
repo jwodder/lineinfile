@@ -1,5 +1,5 @@
 from lineinfile import AfterFirst
 
 line = "gnusto=cleesh"
-args = {"locator": AfterFirst(r'^foo=')}
+args = {"inserter": AfterFirst(r'^foo=')}
 options = ["-a", "^foo="]

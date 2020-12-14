@@ -67,7 +67,7 @@ The equivalent operation in Python:
         "settings.ini",
         "theoption = thevalue",
         regexp=r"^theoption\s*=",
-        locator=AfterFirst(r"^\[thesection\]$"),
+        inserter=AfterFirst(r"^\[thesection\]$"),
     )
 
 Replace the first instance of "``foo = ...``" with "``foo = 'bar'``",
@@ -282,7 +282,7 @@ regular expression to start matching at the beginning of a line, prefix it with
         filepath: Union[str, os.PathLike],
         line: str,
         regexp: Optional[Union[str, re.Pattern[str]]] = None,
-        locator: Optional[Locator] = None,
+        inserter: Optional[Inserter] = None,
         match_first: bool = False,
         backrefs: bool = False,
         backup: Optional[BackupWhen] = None,
@@ -298,7 +298,7 @@ the first matching line, if ``match_first=True``).  If the regular expression
 does not match any lines (or no regular expression is specified) and ``line``
 is not found in the file, the line is inserted at the end of the file by
 default; this can be changed by passing the appropriate object as the
-``locator`` argument; see "Locators_" below.
+``inserter`` argument; see "Inserters_" below.
 
 When ``backrefs`` is true, if ``regexp`` matches, the capturing groups in the
 regular expression are used to expand any ``\n``, ``\g<n>``, or ``\g<name>``
@@ -346,7 +346,7 @@ original, with the value of ``backup_ext`` (default: ``~``) appended.
         s: str,
         line: str,
         regexp: Optional[Union[str, re.Pattern[str]]] = None,
-        locator: Optional[Locator] = None,
+        inserter: Optional[Inserter] = None,
         match_first: bool = False,
         backrefs: bool = False,
     ) -> str
@@ -358,7 +358,7 @@ string or a compiled pattern object) and it matches any lines in the input,
 ``match_first=True``).  If the regular expression does not match any lines (or
 no regular expression is specified) and ``line`` is not found in the input, the
 line is inserted at the end of the input by default; this can be changed by
-passing the appropriate object as the ``locator`` argument; see "Locators_"
+passing the appropriate object as the ``inserter`` argument; see "Inserters_"
 below.
 
 When ``backrefs`` is true, if ``regexp`` matches, the capturing groups in the
@@ -381,14 +381,14 @@ Delete all lines from the string ``s`` that match the regular expression
 result.
 
 
-Locators
---------
+Inserters
+---------
 
-Locators are objects used by the ``add_line_*`` functions to determine the
+Inserters are objects used by the ``add_line_*`` functions to determine the
 location at which to insert ``line`` when it is not found in the input and the
 ``regexp`` argument, if set, doesn't match any lines.
 
-``lineinfile`` provides the following locator classes:
+``lineinfile`` provides the following inserter classes:
 
 ``AtBOF()``
     Always inserts the line at the beginning of the file
@@ -439,10 +439,10 @@ line separators:
   in the input, the line ending is stripped from both lines.  This is a
   deviation from Ansible's behavior, where only the input line is stripped.
 
-- When matching an input line against ``regexp`` or a locator, line endings are
-  not stripped.  Note that a regex like ``r"foo$"`` will not match a line that
-  ends with a non-LF line ending, so this can result in patterns not matching
-  where you might naïvely expect them to match.
+- When matching an input line against ``regexp`` or an inserter, line endings
+  are not stripped.  Note that a regex like ``r"foo$"`` will not match a line
+  that ends with a non-LF line ending, so this can result in patterns not
+  matching where you might naïvely expect them to match.
 
 - When adding a line to the end of a file, if the file does not end with a line
   ending already, an LF is appended before adding the line.

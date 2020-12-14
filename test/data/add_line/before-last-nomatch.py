@@ -1,5 +1,5 @@
 from lineinfile import BeforeLast
 
 line = "gnusto=cleesh"
-args = {"locator": BeforeLast('notinfile')}
+args = {"inserter": BeforeLast('notinfile')}
 options = ["-B", "notinfile"]

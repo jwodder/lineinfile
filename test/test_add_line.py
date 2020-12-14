@@ -26,7 +26,7 @@ class AddLineCase(
         return self.input != self.output
 
 # The set of test cases has to be fetched anew for every test because the
-# locators contain mutable state.
+# inserters contain mutable state.
 
 def add_line_cases():
     for cfgfile in sorted(CASES_DIR.glob("*.py")):
@@ -257,7 +257,7 @@ CLI_DEFAULTS = {
     "backup_ext": None,
     "create": False,
     "match_first": False,
-    "locator": None,
+    "inserter": None,
 }
 
 @pytest.mark.parametrize('case', file_add_line_cases(), ids=attrgetter("name"))
@@ -316,7 +316,7 @@ def test_cli_add_file_not_exists_no_error(backup_opts, backup_args, mocker):
     args = {**CLI_DEFAULTS, **backup_args}
     add_line_mock.assert_called_once_with("file.txt", "gnusto=cleesh", **args)
 
-@pytest.mark.parametrize('opts,locator', [
+@pytest.mark.parametrize('opts,inserter', [
     ([], None),
     (["--after-first", "foo"], AfterFirst('foo')),
     (["--after-first", "foo", "--before-last", "bar"], BeforeLast('bar')),
@@ -339,7 +339,7 @@ def test_cli_add_file_not_exists_no_error(backup_opts, backup_args, mocker):
         marks=pytest.mark.xfail(reason="Click doesn't work that way."),
     ),
 ])
-def test_cli_add_locator_options(opts, locator, mocker):
+def test_cli_add_inserter_options(opts, inserter, mocker):
     runner = CliRunner()
     with runner.isolated_filesystem():
         Path("file.txt").touch()
@@ -354,7 +354,7 @@ def test_cli_add_locator_options(opts, locator, mocker):
         )
     assert r.exit_code == 0, show_result(r)
     assert r.output == ''
-    args = {**CLI_DEFAULTS, "locator": locator}
+    args = {**CLI_DEFAULTS, "inserter": inserter}
     add_line_mock.assert_called_once_with("file.txt", "gnusto=cleesh", **args)
 
 @pytest.mark.parametrize('opts,match_first', [

@@ -7,11 +7,11 @@ from   .      import (
 )
 
 if TYPE_CHECKING:
-    from . import Locator
+    from . import Inserter
 
-def set_locator(ctx: click.Context, param: click.Parameter, value: Any) -> Any:
+def set_inserter(ctx: click.Context, param: click.Parameter, value: Any) -> Any:
     if value is not None:
-        ctx.params["locator"] = value
+        ctx.params["inserter"] = value
     return value
 
 @click.group()
@@ -33,7 +33,7 @@ def main() -> None:
     '-a', '--after-first',
     metavar='REGEX',
     type=AfterFirst,
-    callback=set_locator,
+    callback=set_inserter,
     expose_value=False,
     help="Insert LINE after the first line matching REGEX",
 )
@@ -41,7 +41,7 @@ def main() -> None:
     '-A', '--after-last',
     metavar='REGEX',
     type=AfterLast,
-    callback=set_locator,
+    callback=set_inserter,
     expose_value=False,
     help="Insert LINE after the last line matching REGEX",
 )
@@ -49,7 +49,7 @@ def main() -> None:
     '-b', '--before-first',
     metavar='REGEX',
     type=BeforeFirst,
-    callback=set_locator,
+    callback=set_inserter,
     expose_value=False,
     help="Insert LINE before the first line matching REGEX",
 )
@@ -57,21 +57,21 @@ def main() -> None:
     '-B', '--before-last',
     metavar='REGEX',
     type=BeforeLast,
-    callback=set_locator,
+    callback=set_inserter,
     expose_value=False,
     help="Insert LINE before the last line matching REGEX",
 )
 @click.option(
     '--bof',
     flag_value=AtBOF(),
-    callback=set_locator,
+    callback=set_inserter,
     expose_value=False,
     help="Insert LINE at the beginning of the file",
 )
 @click.option(
     '--eof',
     flag_value=AtEOF(),
-    callback=set_locator,
+    callback=set_inserter,
     expose_value=False,
     help="Insert LINE at the end of the file [default]",
 )
@@ -130,7 +130,7 @@ def add(
     backup_ext: Optional[str],
     create: bool,
     match_first: bool,
-    locator: Optional["Locator"] = None,
+    inserter: Optional["Inserter"] = None,
     outfile: Optional[TextIO] = None,
 ) -> None:
     """
@@ -175,7 +175,7 @@ def add(
             before,
             line,
             regexp=regexp,
-            locator=locator,
+            inserter=inserter,
             match_first=match_first,
             backrefs=backrefs,
         )
@@ -190,7 +190,7 @@ def add(
             file,
             line,
             regexp=regexp,
-            locator=locator,
+            inserter=inserter,
             match_first=match_first,
             backrefs=backrefs,
             backup=backup,

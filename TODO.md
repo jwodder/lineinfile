@@ -23,8 +23,8 @@
 
 - Library:
     - Add encoding & errors options for the file functions
-    - Make locators not contain mutable state, so that they are reusable across
-      `add_line_*` calls
+    - Make inserters not contain mutable state, so that they are reusable
+      across `add_line_*` calls
     - Add functions that operate on lists of pre-split lines?
         - Such functions should not do anything special regarding line endings
     - Should the library functions return structures containing information on

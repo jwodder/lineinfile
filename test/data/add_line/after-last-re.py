@@ -2,5 +2,5 @@ import re
 from   lineinfile import AfterLast
 
 line = "gnusto=cleesh"
-args = {"locator": AfterLast(re.compile(r'^foo='))}
+args = {"inserter": AfterLast(re.compile(r'^foo='))}
 options = ["--after-last", "^foo="]
