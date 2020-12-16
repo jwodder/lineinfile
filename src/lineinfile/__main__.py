@@ -214,7 +214,6 @@ def add(
     metavar='EXT',
     help="Extension for backup file [default: ~]",
 )
-#@click.option('-c', '--create', is_flag=True)
 @click.option(
     '-o', '--outfile',
     type=click.File("w"),
@@ -231,7 +230,6 @@ def remove(
     file: str,
     backup: Optional[BackupWhen],
     backup_ext: Optional[str],
-    #create: bool,
     outfile: Optional[TextIO] = None,
 ) -> None:
     """
@@ -257,8 +255,6 @@ def remove(
             raise click.UsageError(errmsg.format(option="--backup-changed"))
         if backup is ALWAYS:
             raise click.UsageError(errmsg.format(option="--backup-always"))
-        #if create:
-        #    raise click.UsageError(errmsg.format(option="--create"))
         with click.open_file(file) as fp:
             before = fp.read()
         after = remove_lines_from_string(before, regexp)
@@ -274,7 +270,6 @@ def remove(
             regexp,
             backup=backup,
             backup_ext=backup_ext,
-            #create=create,
         )
 
 if __name__ == '__main__':

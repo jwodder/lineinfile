@@ -186,7 +186,6 @@ def test_backup_symlink_no_change(tmp_path):
 CLI_DEFAULTS = {
     "backup": None,
     "backup_ext": None,
-    #"create": False,
 }
 
 @pytest.mark.parametrize('opts,args', [
@@ -201,7 +200,6 @@ CLI_DEFAULTS = {
     (["-i.bak", "--backup-always"], {"backup": ALWAYS, "backup_ext": ".bak"}),
     (["--backup-changed", "--backup-always"], {"backup": ALWAYS}),
     (["--backup-always", "--backup-changed"], {"backup": CHANGED}),
-    #(["--create"], {"create": True}),
 ])
 def test_cli_remove(opts, args, mocker):
     runner = CliRunner()
@@ -270,7 +268,6 @@ def test_cli_remove_stdin(input_args, mocker):
     ("--backup-changed", "--backup-changed"),
     ("--backup-always", "--backup-always"),
     ("-i.bak", "--backup-ext"),
-    #("--create", "--create"),
 ])
 def test_cli_remove_stdin_bad_file_args(file_arg, err_arg, input_args, mocker):
     runner = CliRunner()
@@ -379,7 +376,6 @@ def test_cli_remove_outfile_stdout(mocker):
     ("--backup-changed", "--backup-changed"),
     ("--backup-always", "--backup-always"),
     ("-i.bak", "--backup-ext"),
-    #("--create", "--create"),
 ])
 def test_cli_remove_outfile_bad_file_args(file_arg, err_arg, mocker):
     runner = CliRunner()
