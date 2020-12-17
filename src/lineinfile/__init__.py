@@ -72,6 +72,8 @@ if TYPE_CHECKING:
 Patternish = Union[str, Pattern[str]]
 
 class AtBOF:
+    """ Inserter that always inserts at the beginning of the file """
+
     def feed(self, i: int, line: str) -> None:
         pass
 
@@ -86,6 +88,8 @@ class AtBOF:
 
 
 class AtEOF:
+    """ Inserter that always inserts at the end of the file """
+
     def feed(self, i: int, line: str) -> None:
         pass
 
@@ -121,24 +125,48 @@ class PatternInserter:
 
 
 class AfterFirst(PatternInserter):
+    """
+    Inserter that inserts after the first input line that matches the given
+    regular expression (either a string or a compiled pattern object), or at
+    the end of the file if no line matches
+    """
+
     def feed(self, i: int, line: str) -> None:
         if self.i is None and self.pattern.search(line):
             self.i = i+1
 
 
 class AfterLast(PatternInserter):
+    """
+    Inserter that inserts after the last input line that matches the given
+    regular expression (either a string or a compiled pattern object), or at
+    the end of the file if no line matches
+    """
+
     def feed(self, i: int, line: str) -> None:
         if self.pattern.search(line):
             self.i = i+1
 
 
 class BeforeFirst(PatternInserter):
+    """
+    Inserter that inserts before the first input line that matches the given
+    regular expression (either a string or a compiled pattern object), or at
+    the end of the file if no line matches
+    """
+
     def feed(self, i: int, line: str) -> None:
         if self.i is None and self.pattern.search(line):
             self.i = i
 
 
 class BeforeLast(PatternInserter):
+    """
+    Inserter that inserts before the last input line that matches the given
+    regular expression (either a string or a compiled pattern object), or at
+    the end of the file if no line matches
+    """
+
     def feed(self, i: int, line: str) -> None:
         if self.pattern.search(line):
             self.i = i
@@ -231,6 +259,24 @@ def add_line_to_string(
     match_first: bool = False,
     backrefs: bool = False,
 ) -> str:
+    """
+    Add the given ``line`` to the string ``s`` if it is not already present and
+    return the result.  If ``regexp`` is set to a regular expression (either a
+    string or a compiled pattern object) and it matches any lines in the input,
+    ``line`` will replace the last matching line (or the first matching line,
+    if ``match_first=True``).  If the regular expression does not match any
+    lines (or no regular expression is specified) and ``line`` is not found in
+    the input, the line is inserted at the end of the input by default; this
+    can be changed by passing the appropriate object as the ``inserter``
+    argument; see "Inserters_" below.
+
+    When ``backrefs`` is true, if ``regexp`` matches, the capturing groups in
+    the regular expression are used to expand any ``\\n``, ``\\g<n>``, or
+    ``\\g<name>`` backreferences in ``line``, and the resulting string replaces
+    the matched line in the input.  If ``backrefs`` is true and ``regexp`` does
+    not match, the input is left unchanged.  It is an error to set ``backrefs``
+    to true without also setting ``regexp``.
+    """
     line_matcher: "Inserter"
     if match_first:
         line_matcher = MatchLineFirst(line)
@@ -286,6 +332,37 @@ def add_line_to_file(
     backup_ext: Optional[str] = None,
     create: bool = False,
 ) -> bool:
+    """
+    Add the given ``line`` to the file at ``filepath`` if it is not already
+    present.  Returns ``True`` if the file is modified.  If ``regexp`` is set
+    to a regular expression (either a string or a compiled pattern object) and
+    it matches any lines in the file, ``line`` will replace the last matching
+    line (or the first matching line, if ``match_first=True``).  If the regular
+    expression does not match any lines (or no regular expression is specified)
+    and ``line`` is not found in the file, the line is inserted at the end of
+    the file by default; this can be changed by passing the appropriate object
+    as the ``inserter`` argument; see "Inserters_" below.
+
+    When ``backrefs`` is true, if ``regexp`` matches, the capturing groups in
+    the regular expression are used to expand any ``\\n``, ``\\g<n>``, or
+    ``\\g<name>`` backreferences in ``line``, and the resulting string replaces
+    the matched line in the input.  If ``backrefs`` is true and ``regexp`` does
+    not match, the file is left unchanged.  It is an error to set ``backrefs``
+    to true without also setting ``regexp``.
+
+    When ``backup`` is set to ``lineinfile.CHANGED``, a backup of the file's
+    original contents is created if the file is modified.  When ``backup`` is
+    set to ``lineinfile.ALWAYS``, a backup is always created, regardless of
+    whether the file is modified.  The name of the backup file will be the same
+    as the original, with the value of ``backup_ext`` (default: ``~``)
+    appended.
+
+    If ``create`` is true and ``filepath`` does not exist, pretend it's empty
+    instead of erroring, and create it with the results of the operation.  No
+    backup file will ever be created for a nonexistent file.  If ``filepath``
+    does not exist and no changes are made (because ``backrefs`` was set and
+    ``regexp`` didn't match), the file will not be created.
+    """
     bext = '~' if backup_ext is None else backup_ext
     if backup is not None and not bext:
         raise ValueError("Cannot use empty string as backup_ext")
@@ -322,6 +399,11 @@ def add_line_to_file(
         return False
 
 def remove_lines_from_string(s: str, regexp: Patternish) -> str:
+    """
+    Delete all lines from the string ``s`` that match the regular expression
+    ``regexp`` (either a string or a compiled pattern object) and return the
+    result.
+    """
     rgx = ensure_compiled(regexp)
     lines = ascii_splitlines(s)
     lines = [ln for ln in lines if not rgx.search(ln)]
@@ -333,6 +415,18 @@ def remove_lines_from_file(
     backup: Optional[BackupWhen] = None,
     backup_ext: Optional[str] = None,
 ) -> bool:
+    """
+    Delete all lines from the file at ``filepath`` that match the regular
+    expression ``regexp`` (either a string or a compiled pattern object).
+    Returns ``True`` if the file is modified.
+
+    When ``backup`` is set to ``lineinfile.CHANGED``, a backup of the file's
+    original contents is created if the file is modified.  When ``backup`` is
+    set to ``lineinfile.ALWAYS``, a backup is always created, regardless of
+    whether the file is modified.  The name of the backup file will be the same
+    as the original, with the value of ``backup_ext`` (default: ``~``)
+    appended.
+    """
     bext = '~' if backup_ext is None else backup_ext
     if backup is not None and not bext:
         raise ValueError("Cannot use empty string as backup_ext")
