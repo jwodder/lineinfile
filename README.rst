@@ -20,6 +20,7 @@
 `GitHub <https://github.com/jwodder/lineinfile>`_
 | `PyPI <https://pypi.org/project/lineinfile/>`_
 | `Issues <https://github.com/jwodder/lineinfile/issues>`_
+| `Changelog <https://github.com/jwodder/lineinfile/blob/master/CHANGELOG.md>`_
 
 Inspired by (but not affiliated with) `the Ansible module of the same name`__,
 ``lineinfile`` provides a command and library for adding a line to a file if
@@ -117,14 +118,15 @@ The ``lineinfile`` command has two subcommands, ``add`` and ``remove``.
 
     lineinfile add [<options>] <line> [<file>]
 
-Add the given ``line`` to the file if it is not already present.  If a `Python
-regular expression`_ is given with the ``-e``/``--regexp`` option and it matches
-any lines in the file, ``line`` will replace the last matching line (or the
-first matching line, if ``--match-first`` is given).  If the regular expression
-does not match any lines (or no regular expression is specified) and ``line``
-is not found in the file, the line is inserted at the end of the file by
-default; this can be changed with the ``--after-first``, ``--after-last``,
-``--before-first``, ``--before-last``, and ``--bof`` options.
+Add the given ``line`` (after expanding backslash escapes) to the file if it is
+not already present.  If a `Python regular expression`_ is given with the
+``-e``/``--regexp`` option and it matches any lines in the file, ``line`` will
+replace the last matching line (or the first matching line, if
+``--match-first`` is given).  If the regular expression does not match any
+lines (or no regular expression is specified) and ``line`` is not found in the
+file, the line is inserted at the end of the file by default; this can be
+changed with the ``--after-first``, ``--after-last``, ``--before-first``,
+``--before-last``, and ``--bof`` options.
 
 If no file name is given on the command line, input is read from standard
 input, and the result is written to standard output.  It is an error to specify

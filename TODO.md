@@ -11,7 +11,6 @@
       `-aAbB`?) as a fixed string
     - Add an `-x`, `--line-regexp` option for causing the regexp (and also
       `-aAbB`?) to be compared for full-line matches?
-    - Expand escape sequences in `line` when `--backrefs` is not given
 
 - `remove` command:
     - Add an `-e <regexp>` option for specifying the regexp in case it begins

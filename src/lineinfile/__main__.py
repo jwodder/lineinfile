@@ -3,7 +3,7 @@ import click
 from   .      import (
     ALWAYS, AfterFirst, AfterLast, AtBOF, AtEOF, BackupWhen, BeforeFirst,
     BeforeLast, CHANGED, __version__, add_line_to_file, add_line_to_string,
-    remove_lines_from_file, remove_lines_from_string,
+    remove_lines_from_file, remove_lines_from_string, unescape,
 )
 
 if TYPE_CHECKING:
@@ -156,6 +156,8 @@ def add(
         raise click.UsageError("--backrefs cannot be specified without --regexp")
     if backup_ext == "":
         raise click.UsageError("--backup-ext cannot be empty")
+    if not backrefs:
+        line = unescape(line)
     if file == "-" or outfile is not None:
         if file == "-":
             errmsg = "{option} cannot be set when reading from standard input."

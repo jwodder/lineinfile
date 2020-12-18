@@ -19,7 +19,7 @@ attributes; those must be set externally.
 Visit <https://github.com/jwodder/lineinfile> for more information.
 """
 
-__version__      = '0.1.0'
+__version__      = '0.2.0.dev1'
 __author__       = 'John Thorvald Wodder II'
 __author_email__ = 'lineinfile@varonathe.org'
 __license__      = 'MIT'
@@ -478,3 +478,7 @@ def chomp(s: str) -> str:
     if s.endswith('\r'):
         s = s[:-1]
     return s
+
+def unescape(s: str) -> str:
+    # <https://stackoverflow.com/a/57192592/744178>
+    return s.encode('latin-1', 'backslashreplace').decode('unicode_escape')

@@ -8,8 +8,9 @@ from   click.testing       import CliRunner
 import pytest
 from   lineinfile          import (
     ALWAYS, AfterFirst, AfterLast, AtBOF, AtEOF, BeforeFirst, BeforeLast,
-    CHANGED, add_line_to_file, add_line_to_string
+    CHANGED, add_line_to_file, add_line_to_string, ensure_terminated
 )
+import lineinfile.__main__
 from   lineinfile.__main__ import main
 
 CASES_DIR = Path(__file__).with_name('data') / 'add_line'
@@ -638,3 +639,105 @@ def test_cli_add_outfile_is_infile(case, mocker):
         args["regexp"] = args["regexp"].pattern
     add_line_file_mock.assert_not_called()
     add_line_str_mock.assert_called_once_with(case.input, case.line, **args)
+
+@pytest.mark.parametrize('escline,line', [
+    ('foo', 'foo'),
+    (r'foo\n', 'foo\n'),
+    (r'foo\\n', 'foo\\n'),
+    (r'foo\\\n', 'foo\\\n'),
+    (r'foo\012', 'foo\n'),
+    (r'foo\x0A', 'foo\n'),
+    (r'foo\u000A', 'foo\n'),
+    (r'foo\\bar', r'foo\bar'),
+    (r"foo\'bar", "foo'bar"),
+    (r'foo\"bar', 'foo"bar'),
+    (r'foo\abar', 'foo\abar'),
+    (r'foo\bbar', 'foo\bbar'),
+    (r'foo\fbar', 'foo\fbar'),
+    (r'foo\tbar', 'foo\tbar'),
+    (r'foo\vbar', 'foo\vbar'),
+    (r'\U0001F410', '\U0001F410'),
+    ('åéîøü', 'åéîøü'),
+    (r'\u2603', '\u2603'),
+    ('\u2603', '\u2603'),
+    ('\U0001F410', '\U0001F410'),
+    (r'\N{SNOWMAN}', '\u2603'),
+])
+def test_cli_add_backslashed(escline, line, mocker):
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        thefile = Path("file.txt")
+        thefile.write_text(INPUT)
+        add_line_file_spy = mocker.spy(lineinfile.__main__, 'add_line_to_file')
+        r = runner.invoke(
+            main,
+            ["add", escline, "file.txt"],
+            standalone_mode=False,
+        )
+        assert r.exit_code == 0, show_result(r)
+        assert r.output == ''
+        assert os.listdir() == ["file.txt"]
+        assert thefile.read_text() == INPUT + ensure_terminated(line)
+    add_line_file_spy.assert_called_once_with("file.txt", line, **CLI_DEFAULTS)
+
+@pytest.mark.parametrize('escline,line', [
+    ('foo', 'foo'),
+    (r'foo\n', 'foo\n'),
+    (r'foo\\n', 'foo\\n'),
+    (r'foo\\\n', 'foo\\\n'),
+    (r'foo\012', 'foo\n'),
+    pytest.param(
+        r'foo\x0A', 'foo\n',
+        marks=pytest.mark.xfail(reason='Not supported by Match.expand()'),
+    ),
+    pytest.param(
+        r'foo\u000A', 'foo\n',
+        marks=pytest.mark.xfail(reason='Not supported by Match.expand()'),
+    ),
+    (r'foo\\bar', r'foo\bar'),
+    pytest.param(
+        r"foo\'bar", "foo'bar",
+        marks=pytest.mark.xfail(reason='Not supported by Match.expand()'),
+    ),
+    pytest.param(
+        r'foo\"bar', 'foo"bar',
+        marks=pytest.mark.xfail(reason='Not supported by Match.expand()'),
+    ),
+    (r'foo\abar', 'foo\abar'),
+    (r'foo\bbar', 'foo\bbar'),
+    (r'foo\fbar', 'foo\fbar'),
+    (r'foo\tbar', 'foo\tbar'),
+    (r'foo\vbar', 'foo\vbar'),
+    pytest.param(
+        r'\U0001F410', '\U0001F410',
+        marks=pytest.mark.xfail(reason='Not supported by Match.expand()'),
+    ),
+    ('åéîøü', 'åéîøü'),
+    pytest.param(
+        r'\u2603', '\u2603',
+        marks=pytest.mark.xfail(reason='Not supported by Match.expand()'),
+    ),
+    ('\u2603', '\u2603'),
+    ('\U0001F410', '\U0001F410'),
+    pytest.param(
+        r'\N{SNOWMAN}', '\u2603',
+        marks=pytest.mark.xfail(reason='Not supported by Match.expand()'),
+    ),
+])
+def test_cli_add_backslashed_backrefs(escline, line, mocker):
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        thefile = Path("file.txt")
+        thefile.write_text(INPUT + 'replaceme\n')
+        add_line_file_spy = mocker.spy(lineinfile.__main__, 'add_line_to_file')
+        r = runner.invoke(
+            main,
+            ["add", "--backrefs", "-e", "replaceme", escline, "file.txt"],
+            standalone_mode=False,
+        )
+        assert r.exit_code == 0, show_result(r)
+        assert r.output == ''
+        assert os.listdir() == ["file.txt"]
+        assert thefile.read_text() == INPUT + ensure_terminated(line)
+    args = {**CLI_DEFAULTS, "regexp": "replaceme", "backrefs": True}
+    add_line_file_spy.assert_called_once_with("file.txt", escline, **args)
