@@ -106,6 +106,11 @@ def main() -> None:
     help="Treat nonexistent FILE as empty",
 )
 @click.option(
+    '-L', '--line', 'line_opt',
+    metavar='LINE',
+    help='Use LINE as the line to insert',
+)
+@click.option(
     '-m/-M', '--match-first/--match-last',
     default=False,
     help="`--regexp` replaces first/last matching line in input [default: last]",
@@ -115,15 +120,12 @@ def main() -> None:
     type=click.File("w"),
     help="Write output to given file",
 )
-@click.argument('line')
-@click.argument(
-    'file',
-    type=click.Path(dir_okay=False, writable=True, allow_dash=True),
-    default="-",
-)
+@click.argument('line', required=False)
+@click.argument('file', required=False)
 def add(
-    line: str,
-    file: str,
+    line: Optional[str],
+    file: Optional[str],
+    line_opt: Optional[str],
     regexp: Optional[str],
     backrefs: bool,
     backup: Optional[BackupWhen],
@@ -156,10 +158,23 @@ def add(
         raise click.UsageError("--backrefs cannot be specified without --regexp")
     if backup_ext == "":
         raise click.UsageError("--backup-ext cannot be empty")
+    if line_opt is None:
+        if line is None:
+            raise click.UsageError("No LINE given")
+        else:
+            theline = line
+        thefile = "-" if file is None else file
+    else:
+        theline = line_opt
+        thefile = "-" if line is None else line
+        if file is not None:
+            raise click.UsageError(
+                "-L/--line given with too many positional arguments"
+            )
     if not backrefs:
-        line = unescape(line)
-    if file == "-" or outfile is not None:
-        if file == "-":
+        theline = unescape(theline)
+    if thefile == "-" or outfile is not None:
+        if thefile == "-":
             errmsg = "{option} cannot be set when reading from standard input."
         else:
             errmsg = "{option} is incompatible with --outfile."
@@ -171,11 +186,11 @@ def add(
             raise click.UsageError(errmsg.format(option="--backup-always"))
         if create:
             raise click.UsageError(errmsg.format(option="--create"))
-        with click.open_file(file) as fp:
+        with click.open_file(thefile) as fp:
             before = fp.read()
         after = add_line_to_string(
             before,
-            line,
+            theline,
             regexp=regexp,
             inserter=inserter,
             match_first=match_first,
@@ -189,8 +204,8 @@ def add(
         print(after, end='', file=outfp)
     else:
         add_line_to_file(
-            file,
-            line,
+            thefile,
+            theline,
             regexp=regexp,
             inserter=inserter,
             match_first=match_first,

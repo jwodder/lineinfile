@@ -5,8 +5,6 @@
       anything changed?  (Failure on change?)
 
 - `add` command:
-    - Add an `-L <line>` option for specifying the line in case it
-      begins with a hyphen.
     - Add an `-F`, `--fixed-string` option for treating the regexp (and also
       `-aAbB`?) as a fixed string
     - Add an `-x`, `--line-regexp` option for causing the regexp (and also

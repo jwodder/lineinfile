@@ -117,6 +117,7 @@ The ``lineinfile`` command has two subcommands, ``add`` and ``remove``.
 ::
 
     lineinfile add [<options>] <line> [<file>]
+    lineinfile add [<options>] -L <line> [<file>]
 
 Add the given ``line`` (after expanding backslash escapes) to the file if it is
 not already present.  If a `Python regular expression`_ is given with the
@@ -216,6 +217,9 @@ Options
                             made (because ``--backrefs`` was specified and
                             ``--regexp`` didn't match), the file will not be
                             created.
+
+-L LINE, --line LINE        Use ``LINE`` as the line to insert.  This option is
+                            useful when ``LINE`` begins with a hyphen.
 
 -m, --match-first           If ``--regexp`` matches, replace the first matching
                             line with ``line``.

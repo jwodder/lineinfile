@@ -741,3 +741,90 @@ def test_cli_add_backslashed_backrefs(escline, line, mocker):
         assert thefile.read_text() == INPUT + ensure_terminated(line)
     args = {**CLI_DEFAULTS, "regexp": "replaceme", "backrefs": True}
     add_line_file_spy.assert_called_once_with("file.txt", escline, **args)
+
+@pytest.mark.parametrize('line', [
+    "gnusto=cleesh",
+    "-ecleesh",
+    "--gnusto=cleesh",
+])
+def test_cli_add_line_opt_file(line, mocker):
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        Path("file.txt").touch()
+        add_line_mock = mocker.patch(
+            'lineinfile.__main__.add_line_to_file',
+            return_value=True,
+        )
+        r = runner.invoke(
+            main,
+            ["add", "-L", line, "file.txt"],
+            standalone_mode=False,
+        )
+    assert r.exit_code == 0, show_result(r)
+    assert r.output == ''
+    add_line_mock.assert_called_once_with("file.txt", line, **CLI_DEFAULTS)
+
+@pytest.mark.parametrize('line', [
+    "gnusto=cleesh",
+    "-ecleesh",
+    "--gnusto=cleesh",
+])
+@pytest.mark.parametrize('input_args', [[], ["-"]])
+def test_cli_add_line_opt_stdin(input_args, line, mocker):
+    runner = CliRunner()
+    output = INPUT + line + "\n"
+    with runner.isolated_filesystem():
+        Path("file.txt").touch()
+        add_line_file_mock = mocker.patch(
+            'lineinfile.__main__.add_line_to_file',
+            return_value=True,
+        )
+        add_line_str_mock = mocker.patch(
+            'lineinfile.__main__.add_line_to_string',
+            return_value=output,
+        )
+        r = runner.invoke(
+            main,
+            ["add", "-L", line] + input_args,
+            input=INPUT,
+            standalone_mode=False,
+        )
+    assert r.exit_code == 0, show_result(r)
+    assert r.output == output
+    args = {**CLI_DEFAULTS}
+    args.pop("backup")
+    args.pop("backup_ext")
+    args.pop("create")
+    add_line_file_mock.assert_not_called()
+    add_line_str_mock.assert_called_once_with(INPUT, line, **args)
+
+def test_cli_add_line_opt_two_args(mocker):
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        Path("file.txt").touch()
+        add_line_mock = mocker.patch(
+            'lineinfile.__main__.add_line_to_file',
+            return_value=True,
+        )
+        r = runner.invoke(
+            main,
+            ["add", "--line", "gnusto=cleesh", "foo=bar", "file.txt"],
+            standalone_mode=False,
+        )
+    assert r.exit_code != 0
+    assert isinstance(r.exception, click.UsageError)
+    assert str(r.exception) == "-L/--line given with too many positional arguments"
+    add_line_mock.assert_not_called()
+
+def test_cli_add_no_line_opt_no_args(mocker):
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        add_line_mock = mocker.patch(
+            'lineinfile.__main__.add_line_to_file',
+            return_value=True,
+        )
+        r = runner.invoke(main, ["add"], standalone_mode=False)
+    assert r.exit_code != 0
+    assert isinstance(r.exception, click.UsageError)
+    assert str(r.exception) == "No LINE given"
+    add_line_mock.assert_not_called()
