@@ -232,19 +232,21 @@ def add(
     help="Extension for backup file [default: ~]",
 )
 @click.option(
+    '-e', '--regexp', 'regexp_opt',
+    metavar='REGEX',
+    help="Delete lines matching REGEX",
+)
+@click.option(
     '-o', '--outfile',
     type=click.File("w"),
     help="Write output to given file",
 )
-@click.argument('regexp')
-@click.argument(
-    'file',
-    type=click.Path(dir_okay=False, writable=True, allow_dash=True),
-    default="-",
-)
+@click.argument('regexp', required=False)
+@click.argument('file', required=False)
 def remove(
-    regexp: str,
-    file: str,
+    regexp: Optional[str],
+    file: Optional[str],
+    regexp_opt: Optional[str],
     backup: Optional[BackupWhen],
     backup_ext: Optional[str],
     outfile: Optional[TextIO] = None,
@@ -261,8 +263,21 @@ def remove(
         backup = CHANGED
     if backup_ext == "":
         raise click.UsageError("--backup-ext cannot be empty")
-    if file == "-" or outfile is not None:
-        if file == "-":
+    if regexp_opt is None:
+        if regexp is None:
+            raise click.UsageError("No REGEXP given")
+        else:
+            theregexp = regexp
+        thefile = "-" if file is None else file
+    else:
+        theregexp = regexp_opt
+        thefile = "-" if regexp is None else regexp
+        if file is not None:
+            raise click.UsageError(
+                "-e/--regexp given with too many positional arguments"
+            )
+    if thefile == "-" or outfile is not None:
+        if thefile == "-":
             errmsg = "{option} cannot be set when reading from standard input."
         else:
             errmsg = "{option} is incompatible with --outfile."
@@ -272,9 +287,9 @@ def remove(
             raise click.UsageError(errmsg.format(option="--backup-changed"))
         if backup is ALWAYS:
             raise click.UsageError(errmsg.format(option="--backup-always"))
-        with click.open_file(file) as fp:
+        with click.open_file(thefile) as fp:
             before = fp.read()
-        after = remove_lines_from_string(before, regexp)
+        after = remove_lines_from_string(before, theregexp)
         if outfile is None:
             outfp = click.get_text_stream("stdout")
         else:
@@ -283,8 +298,8 @@ def remove(
         print(after, end='', file=outfp)
     else:
         remove_lines_from_file(
-            file,
-            regexp,
+            thefile,
+            theregexp,
             backup=backup,
             backup_ext=backup_ext,
         )

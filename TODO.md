@@ -11,8 +11,6 @@
       `-aAbB`?) to be compared for full-line matches?
 
 - `remove` command:
-    - Add an `-e <regexp>` option for specifying the regexp in case it begins
-      with a hyphen.
     - Add an `-F`, `--fixed-string` option for treating the regexp as a fixed
       string
     - Add an `-x`, `--line-regexp` option for causing the regexp to be compared

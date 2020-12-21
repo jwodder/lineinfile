@@ -422,3 +422,78 @@ def test_cli_remove_outfile_is_infile(mocker):
         assert thefile.read_text() == output
     remove_lines_file_mock.assert_not_called()
     remove_lines_str_mock.assert_called_once_with(INPUT, "^foo=")
+
+@pytest.mark.parametrize('regexp', ["^foo=", "-Lfoo=", "--foo=bar"])
+def test_cli_remove_regexp_opt_file(regexp, mocker):
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        Path("file.txt").touch()
+        remove_lines_mock = mocker.patch(
+            'lineinfile.__main__.remove_lines_from_file',
+            return_value=True,
+        )
+        r = runner.invoke(
+            main,
+            ["remove", "-e", regexp, "file.txt"],
+            standalone_mode=False,
+        )
+    assert r.exit_code == 0, show_result(r)
+    assert r.output == ''
+    remove_lines_mock.assert_called_once_with("file.txt", regexp, **CLI_DEFAULTS)
+
+@pytest.mark.parametrize('regexp', ["^foo=", "-Lfoo=", "--foo=bar"])
+@pytest.mark.parametrize('input_args', [[], ["-"]])
+def test_cli_remove_regexp_opt_stdin(input_args, regexp, mocker):
+    runner = CliRunner()
+    output = remove_lines_from_string(INPUT, regexp)
+    with runner.isolated_filesystem():
+        Path("file.txt").touch()
+        remove_lines_file_mock = mocker.patch(
+            'lineinfile.__main__.remove_lines_from_file',
+            return_value=INPUT != output,
+        )
+        remove_lines_str_mock = mocker.patch(
+            'lineinfile.__main__.remove_lines_from_string',
+            return_value=output,
+        )
+        r = runner.invoke(
+            main,
+            ["remove", "-e", regexp] + input_args,
+            input=INPUT,
+            standalone_mode=False,
+        )
+    assert r.exit_code == 0, show_result(r)
+    assert r.output == output
+    remove_lines_file_mock.assert_not_called()
+    remove_lines_str_mock.assert_called_once_with(INPUT, regexp)
+
+def test_cli_remove_regexp_opt_two_args(mocker):
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        Path("file.txt").touch()
+        remove_lines_mock = mocker.patch(
+            'lineinfile.__main__.remove_lines_from_file',
+            return_value=True,
+        )
+        r = runner.invoke(
+            main,
+            ["remove", "--regexp", "^gnusto=", "bar$", "file.txt"],
+            standalone_mode=False,
+        )
+    assert r.exit_code != 0
+    assert isinstance(r.exception, click.UsageError)
+    assert str(r.exception) == "-e/--regexp given with too many positional arguments"
+    remove_lines_mock.assert_not_called()
+
+def test_cli_remove_no_regexp_opt_no_args(mocker):
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        remove_lines_mock = mocker.patch(
+            'lineinfile.__main__.remove_lines_from_file',
+            return_value=True,
+        )
+        r = runner.invoke(main, ["remove"], standalone_mode=False)
+    assert r.exit_code != 0
+    assert isinstance(r.exception, click.UsageError)
+    assert str(r.exception) == "No REGEXP given"
+    remove_lines_mock.assert_not_called()

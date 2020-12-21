@@ -241,6 +241,7 @@ Options
 ::
 
     lineinfile remove [<options>] <regexp> [<file>]
+    lineinfile remove [<options>] -e <regexp> [<file>]
 
 Delete all lines from the given file that match the given `Python regular
 expression`_.
@@ -269,6 +270,9 @@ Options
                             added to the end of the filename.  Implies
                             ``--backup-changed`` if neither it nor
                             ``--backup-always`` is also given.
+
+-e REGEX, --regexp REGEX    Delete all lines that match ``REGEX``.  This option
+                            is useful when ``REGEX`` begins with a hyphen.
 
 -o FILE, --outfile FILE     Write the resulting file contents to ``FILE``
                             instead of modifying the input file.
