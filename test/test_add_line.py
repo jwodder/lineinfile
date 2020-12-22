@@ -252,14 +252,18 @@ def test_backup_symlink_no_change(tmp_path):
     assert (tmp_path / "link.txt.bak").read_text() == INPUT
     assert thefile.read_text() == INPUT
 
-CLI_DEFAULTS = {
+STRING_DEFAULTS = {
     "regexp": None,
     "backrefs": False,
+    "match_first": False,
+    "inserter": None,
+}
+
+CLI_DEFAULTS = {
+    **STRING_DEFAULTS,
     "backup": None,
     "backup_ext": None,
     "create": False,
-    "match_first": False,
-    "inserter": None,
 }
 
 @pytest.mark.parametrize('case', file_add_line_cases(), ids=attrgetter("name"))
@@ -444,10 +448,7 @@ def test_cli_add_stdin(case, input_args, mocker):
         )
     assert r.exit_code == 0, show_result(r)
     assert r.output == case.output
-    args = {**CLI_DEFAULTS, **case.args}
-    args.pop("backup")
-    args.pop("backup_ext")
-    args.pop("create")
+    args = {**STRING_DEFAULTS, **case.args}
     if args["regexp"] is not None and not isinstance(args["regexp"], str):
         args["regexp"] = args["regexp"].pattern
     add_line_file_mock.assert_not_called()
@@ -508,10 +509,7 @@ def test_cli_add_outfile(case, mocker):
         assert sorted(os.listdir()) == ["file.txt", "out.txt"]
         assert thefile.read_text() == case.input
         assert Path("out.txt").read_text() == case.output
-    args = {**CLI_DEFAULTS, **case.args}
-    args.pop("backup")
-    args.pop("backup_ext")
-    args.pop("create")
+    args = {**STRING_DEFAULTS, **case.args}
     if args["regexp"] is not None and not isinstance(args["regexp"], str):
         args["regexp"] = args["regexp"].pattern
     add_line_file_mock.assert_not_called()
@@ -542,10 +540,7 @@ def test_cli_add_stdin_outfile(case, input_args, mocker):
         assert sorted(os.listdir()) == ["-", "out.txt"]
         assert Path("-").read_text() == ''
         assert Path("out.txt").read_text() == case.output
-    args = {**CLI_DEFAULTS, **case.args}
-    args.pop("backup")
-    args.pop("backup_ext")
-    args.pop("create")
+    args = {**STRING_DEFAULTS, **case.args}
     if args["regexp"] is not None and not isinstance(args["regexp"], str):
         args["regexp"] = args["regexp"].pattern
     add_line_file_mock.assert_not_called()
@@ -573,10 +568,7 @@ def test_cli_add_outfile_stdout(case, mocker):
         assert r.output == case.output
         assert os.listdir() == ["file.txt"]
         assert thefile.read_text() == case.input
-    args = {**CLI_DEFAULTS, **case.args}
-    args.pop("backup")
-    args.pop("backup_ext")
-    args.pop("create")
+    args = {**STRING_DEFAULTS, **case.args}
     if args["regexp"] is not None and not isinstance(args["regexp"], str):
         args["regexp"] = args["regexp"].pattern
     add_line_file_mock.assert_not_called()
@@ -632,10 +624,7 @@ def test_cli_add_outfile_is_infile(case, mocker):
         assert r.output == ''
         assert os.listdir() == ["file.txt"]
         assert thefile.read_text() == case.output
-    args = {**CLI_DEFAULTS, **case.args}
-    args.pop("backup")
-    args.pop("backup_ext")
-    args.pop("create")
+    args = {**STRING_DEFAULTS, **case.args}
     if args["regexp"] is not None and not isinstance(args["regexp"], str):
         args["regexp"] = args["regexp"].pattern
     add_line_file_mock.assert_not_called()
@@ -792,12 +781,8 @@ def test_cli_add_line_opt_stdin(input_args, line, mocker):
         )
     assert r.exit_code == 0, show_result(r)
     assert r.output == output
-    args = {**CLI_DEFAULTS}
-    args.pop("backup")
-    args.pop("backup_ext")
-    args.pop("create")
     add_line_file_mock.assert_not_called()
-    add_line_str_mock.assert_called_once_with(INPUT, line, **args)
+    add_line_str_mock.assert_called_once_with(INPUT, line, **STRING_DEFAULTS)
 
 def test_cli_add_line_opt_two_args(mocker):
     runner = CliRunner()
@@ -835,10 +820,10 @@ def test_add_line_to_file_encoding(mocker, tmp_path):
     thefile.write_text(INPUT, encoding="utf-16")
     add_line_str_spy = mocker.spy(lineinfile, 'add_line_to_string')
     assert add_line_to_file(thefile, "gnusto=cleesh", encoding="utf-16")
-    args = {**CLI_DEFAULTS}
-    args.pop("backup")
-    args.pop("backup_ext")
-    args.pop("create")
-    add_line_str_spy.assert_called_once_with(INPUT, "gnusto=cleesh", **args)
+    add_line_str_spy.assert_called_once_with(
+        INPUT,
+        "gnusto=cleesh",
+        **STRING_DEFAULTS,
+    )
     assert listdir(tmp_path) == ["file.txt"]
     assert thefile.read_text(encoding="utf-16") == INPUT + "gnusto=cleesh\n"
