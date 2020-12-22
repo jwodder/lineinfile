@@ -6,6 +6,7 @@ from   traceback           import format_exception
 import click
 from   click.testing       import CliRunner
 import pytest
+import lineinfile
 from   lineinfile          import (
     ALWAYS, AfterFirst, AfterLast, AtBOF, AtEOF, BeforeFirst, BeforeLast,
     CHANGED, add_line_to_file, add_line_to_string, ensure_terminated
@@ -828,3 +829,16 @@ def test_cli_add_no_line_opt_no_args(mocker):
     assert isinstance(r.exception, click.UsageError)
     assert str(r.exception) == "No LINE given"
     add_line_mock.assert_not_called()
+
+def test_add_line_to_file_encoding(mocker, tmp_path):
+    thefile = tmp_path / "file.txt"
+    thefile.write_text(INPUT, encoding="utf-16")
+    add_line_str_spy = mocker.spy(lineinfile, 'add_line_to_string')
+    assert add_line_to_file(thefile, "gnusto=cleesh", encoding="utf-16")
+    args = {**CLI_DEFAULTS}
+    args.pop("backup")
+    args.pop("backup_ext")
+    args.pop("create")
+    add_line_str_spy.assert_called_once_with(INPUT, "gnusto=cleesh", **args)
+    assert listdir(tmp_path) == ["file.txt"]
+    assert thefile.read_text(encoding="utf-16") == INPUT + "gnusto=cleesh\n"

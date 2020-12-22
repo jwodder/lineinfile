@@ -19,7 +19,7 @@ attributes; those must be set externally.
 Visit <https://github.com/jwodder/lineinfile> for more information.
 """
 
-__version__      = '0.2.0'
+__version__      = '0.3.0.dev1'
 __author__       = 'John Thorvald Wodder II'
 __author_email__ = 'lineinfile@varonathe.org'
 __license__      = 'MIT'
@@ -331,6 +331,7 @@ def add_line_to_file(
     backup: Optional[BackupWhen] = None,
     backup_ext: Optional[str] = None,
     create: bool = False,
+    encoding: Optional[str] = None,
 ) -> bool:
     """
     Add the given ``line`` to the file at ``filepath`` if it is not already
@@ -368,7 +369,7 @@ def add_line_to_file(
         raise ValueError("Cannot use empty string as backup_ext")
     p = Path(filepath)
     try:
-        before = p.read_text()
+        before = p.read_text(encoding=encoding)
     except FileNotFoundError:
         if create:
             before = ''
@@ -390,10 +391,10 @@ def add_line_to_file(
         and (after != before or backup is ALWAYS)
     ):
         bak = p.with_name(p.name + bext)
-        bak.write_text(before)
+        bak.write_text(before, encoding=encoding)
         copystat(p, bak)
     if after != before:
-        p.write_text(after)
+        p.write_text(after, encoding=encoding)
         return True
     else:
         return False
