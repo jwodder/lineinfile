@@ -332,6 +332,7 @@ def add_line_to_file(
     backup_ext: Optional[str] = None,
     create: bool = False,
     encoding: Optional[str] = None,
+    errors: Optional[str] = None,
 ) -> bool:
     """
     Add the given ``line`` to the file at ``filepath`` if it is not already
@@ -369,7 +370,7 @@ def add_line_to_file(
         raise ValueError("Cannot use empty string as backup_ext")
     p = Path(filepath)
     try:
-        before = p.read_text(encoding=encoding)
+        before = p.read_text(encoding=encoding, errors=errors)
     except FileNotFoundError:
         if create:
             before = ''
@@ -391,10 +392,10 @@ def add_line_to_file(
         and (after != before or backup is ALWAYS)
     ):
         bak = p.with_name(p.name + bext)
-        bak.write_text(before, encoding=encoding)
+        bak.write_text(before, encoding=encoding, errors=errors)
         copystat(p, bak)
     if after != before:
-        p.write_text(after, encoding=encoding)
+        p.write_text(after, encoding=encoding, errors=errors)
         return True
     else:
         return False
