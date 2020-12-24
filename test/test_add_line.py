@@ -854,3 +854,35 @@ def test_add_line_to_file_encoding_errors(mocker, tmp_path):
         "a-tilde-degrees=\xC3\xB0\n"
         "edh=\xC3\xB0\n"
     )
+
+def test_add_line_to_file_encoding_errors_backup(mocker, tmp_path):
+    thefile = tmp_path / "file.txt"
+    thefile.write_text(
+        "edh=\xF0\n"
+        "a-tilde-degrees=\xC3\xB0\n",
+        encoding="latin-1",
+    )
+    add_line_str_spy = mocker.spy(lineinfile, 'add_line_to_string')
+    assert add_line_to_file(
+        thefile,
+        "edh=\xF0",
+        encoding="utf-8",
+        errors="surrogateescape",
+        backup=CHANGED,
+    )
+    add_line_str_spy.assert_called_once_with(
+        "edh=\uDCF0\n"
+        "a-tilde-degrees=\xF0\n",
+        "edh=\xF0",
+        **STRING_DEFAULTS,
+    )
+    assert listdir(tmp_path) == ["file.txt", "file.txt~"]
+    assert thefile.read_text(encoding="latin-1") == (
+        "edh=\xF0\n"
+        "a-tilde-degrees=\xC3\xB0\n"
+        "edh=\xC3\xB0\n"
+    )
+    assert thefile.with_name(thefile.name + '~').read_text(encoding="latin-1") == (
+        "edh=\xF0\n"
+        "a-tilde-degrees=\xC3\xB0\n"
+    )
