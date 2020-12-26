@@ -6,6 +6,7 @@ from   traceback           import format_exception
 import click
 from   click.testing       import CliRunner
 import pytest
+import lineinfile
 from   lineinfile          import ALWAYS, CHANGED, remove_lines_from_file, \
                                 remove_lines_from_string
 from   lineinfile.__main__ import main
@@ -497,3 +498,62 @@ def test_cli_remove_no_regexp_opt_no_args(mocker):
     assert isinstance(r.exception, click.UsageError)
     assert str(r.exception) == "No REGEXP given"
     remove_lines_mock.assert_not_called()
+
+def test_remove_lines_from_file_encoding(mocker, tmp_path):
+    thefile = tmp_path / "file.txt"
+    thefile.write_text(INPUT, encoding="utf-16")
+    remove_lines_str_spy = mocker.spy(lineinfile, 'remove_lines_from_string')
+    assert remove_lines_from_file(thefile, "^foo", encoding="utf-16")
+    remove_lines_str_spy.assert_called_once_with(INPUT, "^foo")
+    assert listdir(tmp_path) == ["file.txt"]
+    assert thefile.read_text(encoding="utf-16") \
+        == remove_lines_from_string(INPUT, "^foo")
+
+def test_remove_lines_from_file_encoding_errors(mocker, tmp_path):
+    thefile = tmp_path / "file.txt"
+    thefile.write_text(
+        "edh=\xF0\n"
+        "a-tilde-degrees=\xC3\xB0\n",
+        encoding="latin-1",
+    )
+    remove_lines_str_spy = mocker.spy(lineinfile, 'remove_lines_from_string')
+    assert remove_lines_from_file(
+        thefile,
+        "\uDCF0",
+        encoding="utf-8",
+        errors="surrogateescape",
+    )
+    remove_lines_str_spy.assert_called_once_with(
+        "edh=\uDCF0\n"
+        "a-tilde-degrees=\xF0\n",
+        "\uDCF0",
+    )
+    assert listdir(tmp_path) == ["file.txt"]
+    assert thefile.read_text(encoding="latin-1") == "a-tilde-degrees=\xC3\xB0\n"
+
+def test_remove_lines_from_file_encoding_errors_backup(mocker, tmp_path):
+    thefile = tmp_path / "file.txt"
+    thefile.write_text(
+        "edh=\xF0\n"
+        "a-tilde-degrees=\xC3\xB0\n",
+        encoding="latin-1",
+    )
+    remove_lines_str_spy = mocker.spy(lineinfile, 'remove_lines_from_string')
+    assert remove_lines_from_file(
+        thefile,
+        "\xF0",
+        encoding="utf-8",
+        errors="surrogateescape",
+        backup=CHANGED,
+    )
+    remove_lines_str_spy.assert_called_once_with(
+        "edh=\uDCF0\n"
+        "a-tilde-degrees=\xF0\n",
+        "\xF0",
+    )
+    assert listdir(tmp_path) == ["file.txt", "file.txt~"]
+    assert thefile.read_text(encoding="latin-1") == "edh=\xF0\n"
+    assert thefile.with_name(thefile.name + '~').read_text(encoding="latin-1") == (
+        "edh=\xF0\n"
+        "a-tilde-degrees=\xC3\xB0\n"
+    )

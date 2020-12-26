@@ -416,6 +416,8 @@ def remove_lines_from_file(
     regexp: Patternish,
     backup: Optional[BackupWhen] = None,
     backup_ext: Optional[str] = None,
+    encoding: Optional[str] = None,
+    errors: Optional[str] = None,
 ) -> bool:
     """
     Delete all lines from the file at ``filepath`` that match the regular
@@ -433,14 +435,14 @@ def remove_lines_from_file(
     if backup is not None and not bext:
         raise ValueError("Cannot use empty string as backup_ext")
     p = Path(filepath)
-    before = p.read_text()
+    before = p.read_text(encoding=encoding, errors=errors)
     after = remove_lines_from_string(before, regexp)
     if backup is not None and (after != before or backup is ALWAYS):
         bak = p.with_name(p.name + bext)
-        bak.write_text(before)
+        bak.write_text(before, encoding=encoding, errors=errors)
         copystat(p, bak)
     if after != before:
-        p.write_text(after)
+        p.write_text(after, encoding=encoding, errors=errors)
         return True
     else:
         return False
