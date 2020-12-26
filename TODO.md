@@ -17,7 +17,6 @@
       for full-line matches?
 
 - Library:
-    - Add encoding & errors options for the file functions
     - Make inserters not contain mutable state, so that they are reusable
       across `add_line_*` calls
     - Add functions that operate on lists of pre-split lines?

@@ -1,3 +1,8 @@
+v0.3.0 (in development)
+-----------------------
+- Gave the `add_line_to_file()` and `remove_lines_from_file()` functions
+  `encoding` and `errors` arguments
+
 v0.2.0 (2020-12-21)
 -------------------
 - The `add` command now expands backslash escapes in `line`.

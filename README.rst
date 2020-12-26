@@ -302,6 +302,8 @@ regular expression to start matching at the beginning of a line, prefix it with
         backup: Optional[BackupWhen] = None,
         backup_ext: Optional[str] = None,
         create: bool = False,
+        encoding: Optional[str] = None,
+        errors: Optional[str] = None,
     ) -> bool
 
 Add the given ``line`` to the file at ``filepath`` if it is not already
@@ -341,6 +343,8 @@ didn't match), the file will not be created.
         regexp: Union[str, re.Pattern[str]],
         backup: Optional[BackupWhen] = None,
         backup_ext: Optional[str] = None,
+        encoding: Optional[str] = None,
+        errors: Optional[str] = None,
     ) -> bool
 
 Delete all lines from the file at ``filepath`` that match the regular
