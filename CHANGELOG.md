@@ -1,5 +1,5 @@
-v0.3.0 (in development)
------------------------
+v0.3.0 (2020-12-27)
+-------------------
 - Gave the `add_line_to_file()` and `remove_lines_from_file()` functions
   `encoding` and `errors` arguments
 - Inserter instances can now be safely reused across multiple calls to
