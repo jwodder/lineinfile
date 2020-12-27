@@ -17,8 +17,6 @@
       for full-line matches?
 
 - Library:
-    - Make inserters not contain mutable state, so that they are reusable
-      across `add_line_*` calls
     - Add functions that operate on lists of pre-split lines?
         - Such functions should not do anything special regarding line endings
     - Should the library functions return structures containing information on
@@ -32,5 +30,3 @@
 - idea: When `backrefs` is in effect, support passing the string to expand
   separately from the `line` (Pass it as the `backrefs` value?) so that a line
   can still be added even if the regexp doesn't match
-
-- Get full coverage

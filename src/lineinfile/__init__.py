@@ -41,13 +41,14 @@ __all__ = [
     "remove_lines_from_string",
 ]
 
+from   abc     import ABC, abstractmethod
 from   enum    import Enum
 import os
 from   pathlib import Path
 import re
 from   shutil  import copystat
 import sys
-from   typing  import Any, Optional, TYPE_CHECKING, Union
+from   typing  import Any, Optional, Union
 
 if sys.version_info[:2] >= (3,9):
     from re import Match, Pattern
@@ -55,29 +56,35 @@ if sys.version_info[:2] >= (3,9):
 else:
     from typing import List, Match, Pattern
 
-if TYPE_CHECKING:
-    if sys.version_info[:2] >= (3, 8):
-        from typing import Protocol
-    else:
-        from typing_extensions import Protocol
-
-    class Inserter(Protocol):
-        def feed(self, i: int, line: str) -> None:
-            ...
-
-        def get_index(self) -> Optional[int]:
-            ...
-
-
 Patternish = Union[str, Pattern[str]]
 
-class AtBOF:
-    """ Inserter that always inserts at the beginning of the file """
+class Inserter(ABC):
+    @abstractmethod
+    def update_state(self, state: Optional[int], lineno: int, line: str) \
+            -> Optional[int]:
+        ...
 
-    def feed(self, i: int, line: str) -> None:
-        pass
+    def get_feeder(self) -> "LineFeeder":
+        return LineFeeder(self)
+
+
+class LineFeeder:
+    def __init__(self, inserter: Inserter):
+        self.inserter = inserter
+        self.state: Optional[int] = None
+
+    def feed(self, lineno: int, line: str) -> None:
+        self.state = self.inserter.update_state(self.state, lineno, line)
 
     def get_index(self) -> Optional[int]:
+        return self.state
+
+
+class AtBOF(Inserter):
+    """ Inserter that always inserts at the beginning of the file """
+
+    def update_state(self, state: Optional[int], lineno: int, line: str) \
+            -> Optional[int]:
         return 0
 
     def __eq__(self, other: Any) -> bool:
@@ -87,13 +94,11 @@ class AtBOF:
             return NotImplemented
 
 
-class AtEOF:
+class AtEOF(Inserter):
     """ Inserter that always inserts at the end of the file """
 
-    def feed(self, i: int, line: str) -> None:
-        pass
-
-    def get_index(self) -> Optional[int]:
+    def update_state(self, state: Optional[int], lineno: int, line: str) \
+            -> Optional[int]:
         return None
 
     def __eq__(self, other: Any) -> bool:
@@ -103,23 +108,19 @@ class AtEOF:
             return NotImplemented
 
 
-class PatternInserter:
+class PatternInserter(Inserter):
     def __init__(self, pattern: Patternish) -> None:
         self.pattern: Pattern[str] = ensure_compiled(pattern)
-        self.i: Optional[int] = None
-
-    def get_index(self) -> Optional[int]:
-        return self.i
 
     def __eq__(self, other: Any) -> bool:
         if type(self) is type(other):
-            return (self.pattern, self.i) == (other.pattern, other.i)
+            return bool(self.pattern == other.pattern)
         else:
             return NotImplemented
 
     def __repr__(self) -> str:
         return (
-            '{0.__module__}.{0.__name__}(pattern={1.pattern!r}, i={1.i!r})'
+            '{0.__module__}.{0.__name__}(pattern={1.pattern!r})'
             .format(type(self), self)
         )
 
@@ -131,9 +132,12 @@ class AfterFirst(PatternInserter):
     the end of the file if no line matches
     """
 
-    def feed(self, i: int, line: str) -> None:
-        if self.i is None and self.pattern.search(line):
-            self.i = i+1
+    def update_state(self, state: Optional[int], lineno: int, line: str) \
+            -> Optional[int]:
+        if state is None and self.pattern.search(line):
+            return lineno + 1
+        else:
+            return state
 
 
 class AfterLast(PatternInserter):
@@ -143,9 +147,12 @@ class AfterLast(PatternInserter):
     the end of the file if no line matches
     """
 
-    def feed(self, i: int, line: str) -> None:
+    def update_state(self, state: Optional[int], lineno: int, line: str) \
+            -> Optional[int]:
         if self.pattern.search(line):
-            self.i = i+1
+            return lineno + 1
+        else:
+            return state
 
 
 class BeforeFirst(PatternInserter):
@@ -155,9 +162,12 @@ class BeforeFirst(PatternInserter):
     the end of the file if no line matches
     """
 
-    def feed(self, i: int, line: str) -> None:
-        if self.i is None and self.pattern.search(line):
-            self.i = i
+    def update_state(self, state: Optional[int], lineno: int, line: str) \
+            -> Optional[int]:
+        if state is None and self.pattern.search(line):
+            return lineno
+        else:
+            return state
 
 
 class BeforeLast(PatternInserter):
@@ -167,17 +177,35 @@ class BeforeLast(PatternInserter):
     the end of the file if no line matches
     """
 
-    def feed(self, i: int, line: str) -> None:
+    def update_state(self, state: Optional[int], lineno: int, line: str) \
+            -> Optional[int]:
         if self.pattern.search(line):
-            self.i = i
+            return lineno
+        else:
+            return state
 
 
-class MatchFirst:
+class Matcher(ABC):
     def __init__(self, pattern: Patternish) -> None:
         self.pattern: Pattern[str] = ensure_compiled(pattern)
         self.i: Optional[int] = None
         self.m: Optional[Match[str]] = None
 
+    @abstractmethod
+    def feed(self, i: int, line: str) -> None:
+        ...
+
+    def get_index(self) -> Optional[int]:
+        return self.i
+
+    def expand(self, line: str) -> str:
+        if self.m is None:
+            raise ValueError("No match to expand")  # pragma: no cover
+        else:
+            return self.m.expand(line)
+
+
+class MatchFirst(Matcher):
     def feed(self, i: int, line: str) -> None:
         if self.i is None:
             m = self.pattern.search(line)
@@ -185,39 +213,16 @@ class MatchFirst:
                 self.i = i
                 self.m = m
 
-    def get_index(self) -> Optional[int]:
-        return self.i
 
-    def expand(self, line: str) -> str:
-        if self.m is None:
-            raise ValueError("No match to expand")  # pragma: no cover
-        else:
-            return self.m.expand(line)
-
-
-class MatchLast:
-    def __init__(self, pattern: Patternish) -> None:
-        self.pattern: Pattern[str] = ensure_compiled(pattern)
-        self.i: Optional[int] = None
-        self.m: Optional[Match[str]] = None
-
+class MatchLast(Matcher):
     def feed(self, i: int, line: str) -> None:
         m = self.pattern.search(line)
         if m:
             self.i = i
             self.m = m
 
-    def get_index(self) -> Optional[int]:
-        return self.i
 
-    def expand(self, line: str) -> str:
-        if self.m is None:
-            raise ValueError("No match to expand")  # pragma: no cover
-        else:
-            return self.m.expand(line)
-
-
-class MatchLineFirst:
+class ExactMatchFirst:
     def __init__(self, line: str) -> None:
         self.line: str = chomp(line)
         self.i: Optional[int] = None
@@ -230,7 +235,7 @@ class MatchLineFirst:
         return self.i
 
 
-class MatchLineLast:
+class ExactMatchLast:
     def __init__(self, line: str) -> None:
         self.line: str = chomp(line)
         self.i: Optional[int] = None
@@ -255,7 +260,7 @@ def add_line_to_string(
     s: str,
     line: str,
     regexp: Optional[Patternish] = None,
-    inserter: Optional["Inserter"] = None,
+    inserter: Optional[Inserter] = None,
     match_first: bool = False,
     backrefs: bool = False,
 ) -> str:
@@ -277,12 +282,12 @@ def add_line_to_string(
     not match, the input is left unchanged.  It is an error to set ``backrefs``
     to true without also setting ``regexp``.
     """
-    line_matcher: "Inserter"
+    line_matcher: Union[ExactMatchFirst, ExactMatchLast]
     if match_first:
-        line_matcher = MatchLineFirst(line)
+        line_matcher = ExactMatchFirst(line)
     else:
-        line_matcher = MatchLineLast(line)
-    rgx: Optional["Inserter"]
+        line_matcher = ExactMatchLast(line)
+    rgx: Optional[Matcher]
     if regexp is None:
         rgx = None
         if backrefs:
@@ -291,13 +296,13 @@ def add_line_to_string(
         rgx = MatchFirst(regexp)
     else:
         rgx = MatchLast(regexp)
-    ins = AtEOF() if inserter is None else inserter
+    insfeeder = (AtEOF() if inserter is None else inserter).get_feeder()
     lines = ascii_splitlines(s)
     for i,ln in enumerate(lines):
         line_matcher.feed(i, ln)
         if rgx is not None:
             rgx.feed(i, ln)
-        ins.feed(i, ln)
+        insfeeder.feed(i, ln)
     match_point = None if rgx is None else rgx.get_index()
     if match_point is None:
         if backrefs:
@@ -310,7 +315,7 @@ def add_line_to_string(
             line = rgx.expand(line)
         lines[match_point] = ensure_terminated(line)
     else:
-        insert_point = ins.get_index()
+        insert_point = insfeeder.get_index()
         if insert_point is None:
             if lines:
                 lines[-1] = ensure_terminated(lines[-1])
@@ -325,7 +330,7 @@ def add_line_to_file(
     filepath: Union[str, os.PathLike],
     line: str,
     regexp: Optional[Patternish] = None,
-    inserter: Optional["Inserter"] = None,
+    inserter: Optional[Inserter] = None,
     match_first: bool = False,
     backrefs: bool = False,
     backup: Optional[BackupWhen] = None,
