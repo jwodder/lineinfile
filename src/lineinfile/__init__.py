@@ -83,7 +83,7 @@ class LineFeeder:
 class AtBOF(Inserter):
     """ Inserter that always inserts at the beginning of the file """
 
-    def update_state(self, state: Optional[int], lineno: int, line: str) \
+    def update_state(self, _state: Optional[int], _lineno: int, _line: str) \
             -> Optional[int]:
         return 0
 
@@ -97,7 +97,7 @@ class AtBOF(Inserter):
 class AtEOF(Inserter):
     """ Inserter that always inserts at the end of the file """
 
-    def update_state(self, state: Optional[int], lineno: int, line: str) \
+    def update_state(self, _state: Optional[int], _lineno: int, _line: str) \
             -> Optional[int]:
         return None
 

@@ -9,7 +9,7 @@ from   .      import (
 if TYPE_CHECKING:
     from . import Inserter
 
-def set_inserter(ctx: click.Context, param: click.Parameter, value: Any) -> Any:
+def set_inserter(ctx: click.Context, _param: click.Parameter, value: Any) -> Any:
     if value is not None:
         ctx.params["inserter"] = value
     return value
