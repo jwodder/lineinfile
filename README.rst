@@ -293,7 +293,7 @@ regular expression to start matching at the beginning of a line, prefix it with
 .. code:: python
 
     lineinfile.add_line_to_file(
-        filepath: Union[str, os.PathLike],
+        filepath: Union[str, bytes, os.PathLike[str], os.PathLike[bytes]],
         line: str,
         regexp: Optional[Union[str, re.Pattern[str]]] = None,
         inserter: Optional[Inserter] = None,
@@ -339,7 +339,7 @@ didn't match), the file will not be created.
 .. code:: python
 
     lineinfile.remove_lines_from_file(
-        filepath: Union[str, os.PathLike],
+        filepath: Union[str, bytes, os.PathLike[str], os.PathLike[bytes]],
         regexp: Union[str, re.Pattern[str]],
         backup: Optional[BackupWhen] = None,
         backup_ext: Optional[str] = None,

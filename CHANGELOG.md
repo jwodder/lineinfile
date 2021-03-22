@@ -1,3 +1,8 @@
+v0.4.0 (in development)
+-----------------------
+- Paths passed to `add_line_to_file()` and `remove_lines_from_file()` can now
+  be `bytes` or `os.PathLike[bytes]`
+
 v0.3.0 (2020-12-27)
 -------------------
 - Gave the `add_line_to_file()` and `remove_lines_from_file()` functions

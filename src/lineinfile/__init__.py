@@ -19,7 +19,7 @@ attributes; those must be set externally.
 Visit <https://github.com/jwodder/lineinfile> for more information.
 """
 
-__version__      = '0.3.0'
+__version__      = '0.4.0.dev1'
 __author__       = 'John Thorvald Wodder II'
 __author_email__ = 'lineinfile@varonathe.org'
 __license__      = 'MIT'
@@ -327,7 +327,7 @@ def add_line_to_string(
     return ''.join(lines)
 
 def add_line_to_file(
-    filepath: Union[str, os.PathLike],
+    filepath: Union[str, bytes, "os.PathLike[str]", "os.PathLike[bytes]"],
     line: str,
     regexp: Optional[Patternish] = None,
     inserter: Optional[Inserter] = None,
@@ -373,7 +373,7 @@ def add_line_to_file(
     bext = '~' if backup_ext is None else backup_ext
     if backup is not None and not bext:
         raise ValueError("Cannot use empty string as backup_ext")
-    p = Path(filepath)
+    p = Path(os.fsdecode(filepath))
     try:
         before = p.read_text(encoding=encoding, errors=errors)
     except FileNotFoundError:
@@ -417,7 +417,7 @@ def remove_lines_from_string(s: str, regexp: Patternish) -> str:
     return ''.join(lines)
 
 def remove_lines_from_file(
-    filepath: Union[str, os.PathLike],
+    filepath: Union[str, bytes, "os.PathLike[str]", "os.PathLike[bytes]"],
     regexp: Patternish,
     backup: Optional[BackupWhen] = None,
     backup_ext: Optional[str] = None,
@@ -439,7 +439,7 @@ def remove_lines_from_file(
     bext = '~' if backup_ext is None else backup_ext
     if backup is not None and not bext:
         raise ValueError("Cannot use empty string as backup_ext")
-    p = Path(filepath)
+    p = Path(os.fsdecode(filepath))
     before = p.read_text(encoding=encoding, errors=errors)
     after = remove_lines_from_string(before, regexp)
     if backup is not None and (after != before or backup is ALWAYS):
