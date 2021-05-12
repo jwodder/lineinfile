@@ -5,10 +5,10 @@
       anything changed?  (Failure on change?)
 
 - `add` command:
-    - Add an `-F`, `--fixed-string` option for treating the regexp (and also
-      `-aAbB`?) as a fixed string
-    - Add an `-x`, `--line-regexp` option for causing the regexp (and also
-      `-aAbB`?) to be compared for full-line matches?
+    - Add an `-F`, `--fixed-string` option for treating just the regexp as a
+      fixed string
+    - Add an `-x`, `--line-regexp` option for causing just the regexp to be
+      compared for full-line matches?
 
 - `remove` command:
     - Add an `-F`, `--fixed-string` option for treating the regexp as a fixed

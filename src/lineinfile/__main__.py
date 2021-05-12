@@ -64,6 +64,7 @@ def main() -> None:
 @click.option(
     '--bof',
     flag_value=AtBOF(),
+    type=click.UNPROCESSED,
     callback=set_inserter,
     expose_value=False,
     help="Insert LINE at the beginning of the file",
@@ -71,6 +72,7 @@ def main() -> None:
 @click.option(
     '--eof',
     flag_value=AtEOF(),
+    type=click.UNPROCESSED,
     callback=set_inserter,
     expose_value=False,
     help="Insert LINE at the end of the file [default]",
@@ -88,11 +90,13 @@ def main() -> None:
 @click.option(
     '--backup', '--backup-changed', 'backup',
     flag_value=CHANGED,
+    type=click.UNPROCESSED,
     help="Backup file if modified",
 )
 @click.option(
     '--backup-always', 'backup',
     flag_value=ALWAYS,
+    type=click.UNPROCESSED,
     help="Backup file whether modified or not"
 )
 @click.option(
@@ -219,11 +223,13 @@ def add(
 @click.option(
     '--backup', '--backup-changed', 'backup',
     flag_value=CHANGED,
+    type=click.UNPROCESSED,
     help="Backup file if modified",
 )
 @click.option(
     '--backup-always', 'backup',
     flag_value=ALWAYS,
+    type=click.UNPROCESSED,
     help="Backup file whether modified or not"
 )
 @click.option(
