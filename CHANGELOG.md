@@ -1,5 +1,5 @@
-v0.4.0 (in development)
------------------------
+v0.4.0 (2021-05-12)
+-------------------
 - Paths passed to `add_line_to_file()` and `remove_lines_from_file()` can now
   be `bytes` or `os.PathLike[bytes]`
 - Support Click 8

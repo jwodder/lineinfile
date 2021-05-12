@@ -19,7 +19,7 @@ attributes; those must be set externally.
 Visit <https://github.com/jwodder/lineinfile> for more information.
 """
 
-__version__      = '0.4.0.dev1'
+__version__      = '0.4.0'
 __author__       = 'John Thorvald Wodder II'
 __author_email__ = 'lineinfile@varonathe.org'
 __license__      = 'MIT'
