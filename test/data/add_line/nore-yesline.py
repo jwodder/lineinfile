@@ -1,3 +1,3 @@
 line = "bar=quux"
-args = {"regexp": 'notinfile'}
+args = {"regexp": "notinfile"}
 options = ["-e", "notinfile"]

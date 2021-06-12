@@ -1,3 +1,3 @@
 line = "gnusto=cleesh"
-args = {"regexp": r'^postfeed='}
+args = {"regexp": r"^postfeed="}
 options = ["-e", "^postfeed="]

@@ -19,11 +19,11 @@ attributes; those must be set externally.
 Visit <https://github.com/jwodder/lineinfile> for more information.
 """
 
-__version__      = '0.4.0'
-__author__       = 'John Thorvald Wodder II'
-__author_email__ = 'lineinfile@varonathe.org'
-__license__      = 'MIT'
-__url__          = 'https://github.com/jwodder/lineinfile'
+__version__ = "0.4.0"
+__author__ = "John Thorvald Wodder II"
+__author_email__ = "lineinfile@varonathe.org"
+__license__ = "MIT"
+__url__ = "https://github.com/jwodder/lineinfile"
 
 __all__ = [
     "ALWAYS",
@@ -41,27 +41,30 @@ __all__ = [
     "remove_lines_from_string",
 ]
 
-from   abc     import ABC, abstractmethod
-from   enum    import Enum
+from abc import ABC, abstractmethod
+from enum import Enum
 import os
-from   pathlib import Path
+from pathlib import Path
 import re
-from   shutil  import copystat
+from shutil import copystat
 import sys
-from   typing  import Any, Optional, Union
+from typing import Any, Optional, Union
 
-if sys.version_info[:2] >= (3,9):
+if sys.version_info[:2] >= (3, 9):
     from re import Match, Pattern
+
     List = list
 else:
     from typing import List, Match, Pattern
 
 Patternish = Union[str, Pattern[str]]
 
+
 class Inserter(ABC):
     @abstractmethod
-    def update_state(self, state: Optional[int], lineno: int, line: str) \
-            -> Optional[int]:
+    def update_state(
+        self, state: Optional[int], lineno: int, line: str
+    ) -> Optional[int]:
         ...
 
     def get_feeder(self) -> "LineFeeder":
@@ -81,10 +84,11 @@ class LineFeeder:
 
 
 class AtBOF(Inserter):
-    """ Inserter that always inserts at the beginning of the file """
+    """Inserter that always inserts at the beginning of the file"""
 
-    def update_state(self, _state: Optional[int], _lineno: int, _line: str) \
-            -> Optional[int]:
+    def update_state(
+        self, _state: Optional[int], _lineno: int, _line: str
+    ) -> Optional[int]:
         return 0
 
     def __eq__(self, other: Any) -> bool:
@@ -95,10 +99,11 @@ class AtBOF(Inserter):
 
 
 class AtEOF(Inserter):
-    """ Inserter that always inserts at the end of the file """
+    """Inserter that always inserts at the end of the file"""
 
-    def update_state(self, _state: Optional[int], _lineno: int, _line: str) \
-            -> Optional[int]:
+    def update_state(
+        self, _state: Optional[int], _lineno: int, _line: str
+    ) -> Optional[int]:
         return None
 
     def __eq__(self, other: Any) -> bool:
@@ -119,9 +124,8 @@ class PatternInserter(Inserter):
             return NotImplemented
 
     def __repr__(self) -> str:
-        return (
-            '{0.__module__}.{0.__name__}(pattern={1.pattern!r})'
-            .format(type(self), self)
+        return "{0.__module__}.{0.__name__}(pattern={1.pattern!r})".format(
+            type(self), self
         )
 
 
@@ -132,8 +136,9 @@ class AfterFirst(PatternInserter):
     the end of the file if no line matches
     """
 
-    def update_state(self, state: Optional[int], lineno: int, line: str) \
-            -> Optional[int]:
+    def update_state(
+        self, state: Optional[int], lineno: int, line: str
+    ) -> Optional[int]:
         if state is None and self.pattern.search(line):
             return lineno + 1
         else:
@@ -147,8 +152,9 @@ class AfterLast(PatternInserter):
     the end of the file if no line matches
     """
 
-    def update_state(self, state: Optional[int], lineno: int, line: str) \
-            -> Optional[int]:
+    def update_state(
+        self, state: Optional[int], lineno: int, line: str
+    ) -> Optional[int]:
         if self.pattern.search(line):
             return lineno + 1
         else:
@@ -162,8 +168,9 @@ class BeforeFirst(PatternInserter):
     the end of the file if no line matches
     """
 
-    def update_state(self, state: Optional[int], lineno: int, line: str) \
-            -> Optional[int]:
+    def update_state(
+        self, state: Optional[int], lineno: int, line: str
+    ) -> Optional[int]:
         if state is None and self.pattern.search(line):
             return lineno
         else:
@@ -177,8 +184,9 @@ class BeforeLast(PatternInserter):
     the end of the file if no line matches
     """
 
-    def update_state(self, state: Optional[int], lineno: int, line: str) \
-            -> Optional[int]:
+    def update_state(
+        self, state: Optional[int], lineno: int, line: str
+    ) -> Optional[int]:
         if self.pattern.search(line):
             return lineno
         else:
@@ -252,6 +260,7 @@ class BackupWhen(Enum):
     CHANGED = "CHANGED"
     ALWAYS = "ALWAYS"
 
+
 CHANGED = BackupWhen.CHANGED
 ALWAYS = BackupWhen.ALWAYS
 
@@ -298,7 +307,7 @@ def add_line_to_string(
         rgx = MatchLast(regexp)
     insfeeder = (AtEOF() if inserter is None else inserter).get_feeder()
     lines = ascii_splitlines(s)
-    for i,ln in enumerate(lines):
+    for i, ln in enumerate(lines):
         line_matcher.feed(i, ln)
         if rgx is not None:
             rgx.feed(i, ln)
@@ -324,7 +333,8 @@ def add_line_to_string(
             if lines and insert_point == len(lines):
                 lines[-1] = ensure_terminated(lines[-1])
             lines.insert(insert_point, ensure_terminated(line))
-    return ''.join(lines)
+    return "".join(lines)
+
 
 def add_line_to_file(
     filepath: Union[str, bytes, "os.PathLike[str]", "os.PathLike[bytes]"],
@@ -370,7 +380,7 @@ def add_line_to_file(
     does not exist and no changes are made (because ``backrefs`` was set and
     ``regexp`` didn't match), the file will not be created.
     """
-    bext = '~' if backup_ext is None else backup_ext
+    bext = "~" if backup_ext is None else backup_ext
     if backup is not None and not bext:
         raise ValueError("Cannot use empty string as backup_ext")
     p = Path(os.fsdecode(filepath))
@@ -378,7 +388,7 @@ def add_line_to_file(
         before = p.read_text(encoding=encoding, errors=errors)
     except FileNotFoundError:
         if create:
-            before = ''
+            before = ""
             creating = True
         else:
             raise
@@ -392,10 +402,7 @@ def add_line_to_file(
         match_first=match_first,
         backrefs=backrefs,
     )
-    if (
-        not creating and backup is not None
-        and (after != before or backup is ALWAYS)
-    ):
+    if not creating and backup is not None and (after != before or backup is ALWAYS):
         bak = p.with_name(p.name + bext)
         bak.write_text(before, encoding=encoding, errors=errors)
         copystat(p, bak)
@@ -404,6 +411,7 @@ def add_line_to_file(
         return True
     else:
         return False
+
 
 def remove_lines_from_string(s: str, regexp: Patternish) -> str:
     """
@@ -414,7 +422,8 @@ def remove_lines_from_string(s: str, regexp: Patternish) -> str:
     rgx = ensure_compiled(regexp)
     lines = ascii_splitlines(s)
     lines = [ln for ln in lines if not rgx.search(ln)]
-    return ''.join(lines)
+    return "".join(lines)
+
 
 def remove_lines_from_file(
     filepath: Union[str, bytes, "os.PathLike[str]", "os.PathLike[bytes]"],
@@ -436,7 +445,7 @@ def remove_lines_from_file(
     as the original, with the value of ``backup_ext`` (default: ``~``)
     appended.
     """
-    bext = '~' if backup_ext is None else backup_ext
+    bext = "~" if backup_ext is None else backup_ext
     if backup is not None and not bext:
         raise ValueError("Cannot use empty string as backup_ext")
     p = Path(os.fsdecode(filepath))
@@ -452,19 +461,23 @@ def remove_lines_from_file(
     else:
         return False
 
+
 def ensure_compiled(s_or_re: Patternish) -> Pattern[str]:
     if isinstance(s_or_re, str):
         return re.compile(s_or_re)
     else:
         return s_or_re
 
+
 def ensure_terminated(s: str) -> str:
     if s.endswith(("\r\n", "\n", "\r")):
         return s
     else:
-        return s + '\n'
+        return s + "\n"
 
-EOL_RGX = re.compile(r'\r\n?|\n')
+
+EOL_RGX = re.compile(r"\r\n?|\n")
+
 
 def ascii_splitlines(s: str) -> List[str]:
     """
@@ -474,20 +487,22 @@ def ascii_splitlines(s: str) -> List[str]:
     lines = []
     lastend = 0
     for m in EOL_RGX.finditer(s):
-        lines.append(s[lastend:m.end()])
+        lines.append(s[lastend : m.end()])
         lastend = m.end()
     if lastend < len(s):
         lines.append(s[lastend:])
     return lines
 
+
 def chomp(s: str) -> str:
-    """ Remove a LF, CR, or CR LF line ending from a string """
-    if s.endswith('\n'):
+    """Remove a LF, CR, or CR LF line ending from a string"""
+    if s.endswith("\n"):
         s = s[:-1]
-    if s.endswith('\r'):
+    if s.endswith("\r"):
         s = s[:-1]
     return s
 
+
 def unescape(s: str) -> str:
     # <https://stackoverflow.com/a/57192592/744178>
-    return s.encode('latin-1', 'backslashreplace').decode('unicode_escape')
+    return s.encode("latin-1", "backslashreplace").decode("unicode_escape")

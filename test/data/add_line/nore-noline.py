@@ -1,3 +1,3 @@
 line = "gnusto=cleesh"
-args = {"regexp": 'notinfile'}
+args = {"regexp": "notinfile"}
 options = ["-e", "notinfile"]

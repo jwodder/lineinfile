@@ -1,3 +1,3 @@
 import re
 
-regexp = re.compile(r'^foo=')
+regexp = re.compile(r"^foo=")

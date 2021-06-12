@@ -1,24 +1,39 @@
-from   typing import Any, Optional, TYPE_CHECKING, TextIO
+from typing import Any, Optional, TYPE_CHECKING, TextIO
 import click
-from   .      import (
-    ALWAYS, AfterFirst, AfterLast, AtBOF, AtEOF, BackupWhen, BeforeFirst,
-    BeforeLast, CHANGED, __version__, add_line_to_file, add_line_to_string,
-    remove_lines_from_file, remove_lines_from_string, unescape,
+from . import (
+    ALWAYS,
+    AfterFirst,
+    AfterLast,
+    AtBOF,
+    AtEOF,
+    BackupWhen,
+    BeforeFirst,
+    BeforeLast,
+    CHANGED,
+    __version__,
+    add_line_to_file,
+    add_line_to_string,
+    remove_lines_from_file,
+    remove_lines_from_string,
+    unescape,
 )
 
 if TYPE_CHECKING:
     from . import Inserter
+
 
 def set_inserter(ctx: click.Context, _param: click.Parameter, value: Any) -> Any:
     if value is not None:
         ctx.params["inserter"] = value
     return value
 
+
 @click.group()
 @click.version_option(
     __version__,
-    '-V', '--version',
-    message='lineinfile %(version)s',
+    "-V",
+    "--version",
+    message="lineinfile %(version)s",
 )
 def main() -> None:
     """
@@ -28,41 +43,46 @@ def main() -> None:
     """
     pass
 
+
 @main.command()
 @click.option(
-    '-a', '--after-first',
-    metavar='REGEX',
+    "-a",
+    "--after-first",
+    metavar="REGEX",
     type=AfterFirst,
     callback=set_inserter,
     expose_value=False,
     help="Insert LINE after the first line matching REGEX",
 )
 @click.option(
-    '-A', '--after-last',
-    metavar='REGEX',
+    "-A",
+    "--after-last",
+    metavar="REGEX",
     type=AfterLast,
     callback=set_inserter,
     expose_value=False,
     help="Insert LINE after the last line matching REGEX",
 )
 @click.option(
-    '-b', '--before-first',
-    metavar='REGEX',
+    "-b",
+    "--before-first",
+    metavar="REGEX",
     type=BeforeFirst,
     callback=set_inserter,
     expose_value=False,
     help="Insert LINE before the first line matching REGEX",
 )
 @click.option(
-    '-B', '--before-last',
-    metavar='REGEX',
+    "-B",
+    "--before-last",
+    metavar="REGEX",
     type=BeforeLast,
     callback=set_inserter,
     expose_value=False,
     help="Insert LINE before the last line matching REGEX",
 )
 @click.option(
-    '--bof',
+    "--bof",
     flag_value=AtBOF(),
     type=click.UNPROCESSED,
     callback=set_inserter,
@@ -70,7 +90,7 @@ def main() -> None:
     help="Insert LINE at the beginning of the file",
 )
 @click.option(
-    '--eof',
+    "--eof",
     flag_value=AtEOF(),
     type=click.UNPROCESSED,
     callback=set_inserter,
@@ -78,54 +98,64 @@ def main() -> None:
     help="Insert LINE at the end of the file [default]",
 )
 @click.option(
-    '-e', '--regexp',
-    metavar='REGEX',
+    "-e",
+    "--regexp",
+    metavar="REGEX",
     help="Replace the last line matching REGEX with LINE",
 )
 @click.option(
-    '--backrefs',
+    "--backrefs",
     is_flag=True,
     help="Use `--regexp` match to expand capturing groups in LINE",
 )
 @click.option(
-    '--backup', '--backup-changed', 'backup',
+    "--backup",
+    "--backup-changed",
+    "backup",
     flag_value=CHANGED,
     type=click.UNPROCESSED,
     help="Backup file if modified",
 )
 @click.option(
-    '--backup-always', 'backup',
+    "--backup-always",
+    "backup",
     flag_value=ALWAYS,
     type=click.UNPROCESSED,
-    help="Backup file whether modified or not"
+    help="Backup file whether modified or not",
 )
 @click.option(
-    '-i', '--backup-ext',
-    metavar='EXT',
+    "-i",
+    "--backup-ext",
+    metavar="EXT",
     help="Extension for backup file [default: ~]",
 )
 @click.option(
-    '-c', '--create',
+    "-c",
+    "--create",
     is_flag=True,
     help="Treat nonexistent FILE as empty",
 )
 @click.option(
-    '-L', '--line', 'line_opt',
-    metavar='LINE',
-    help='Use LINE as the line to insert',
+    "-L",
+    "--line",
+    "line_opt",
+    metavar="LINE",
+    help="Use LINE as the line to insert",
 )
 @click.option(
-    '-m/-M', '--match-first/--match-last',
+    "-m/-M",
+    "--match-first/--match-last",
     default=False,
     help="`--regexp` replaces first/last matching line in input [default: last]",
 )
 @click.option(
-    '-o', '--outfile',
+    "-o",
+    "--outfile",
     type=click.File("w"),
     help="Write output to given file",
 )
-@click.argument('line', required=False)
-@click.argument('file', required=False)
+@click.argument("line", required=False)
+@click.argument("file", required=False)
 def add(
     line: Optional[str],
     file: Optional[str],
@@ -172,9 +202,7 @@ def add(
         theline = line_opt
         thefile = "-" if line is None else line
         if file is not None:
-            raise click.UsageError(
-                "-L/--line given with too many positional arguments"
-            )
+            raise click.UsageError("-L/--line given with too many positional arguments")
     if not backrefs:
         theline = unescape(theline)
     if thefile == "-" or outfile is not None:
@@ -205,7 +233,7 @@ def add(
         else:
             outfp = outfile
         # Don't use click.echo(), as it modifies ANSI sequences on Windows
-        print(after, end='', file=outfp)
+        print(after, end="", file=outfp)
     else:
         add_line_to_file(
             thefile,
@@ -219,36 +247,44 @@ def add(
             create=create,
         )
 
+
 @main.command()
 @click.option(
-    '--backup', '--backup-changed', 'backup',
+    "--backup",
+    "--backup-changed",
+    "backup",
     flag_value=CHANGED,
     type=click.UNPROCESSED,
     help="Backup file if modified",
 )
 @click.option(
-    '--backup-always', 'backup',
+    "--backup-always",
+    "backup",
     flag_value=ALWAYS,
     type=click.UNPROCESSED,
-    help="Backup file whether modified or not"
+    help="Backup file whether modified or not",
 )
 @click.option(
-    '-i', '--backup-ext',
-    metavar='EXT',
+    "-i",
+    "--backup-ext",
+    metavar="EXT",
     help="Extension for backup file [default: ~]",
 )
 @click.option(
-    '-e', '--regexp', 'regexp_opt',
-    metavar='REGEX',
+    "-e",
+    "--regexp",
+    "regexp_opt",
+    metavar="REGEX",
     help="Delete lines matching REGEX",
 )
 @click.option(
-    '-o', '--outfile',
+    "-o",
+    "--outfile",
     type=click.File("w"),
     help="Write output to given file",
 )
-@click.argument('regexp', required=False)
-@click.argument('file', required=False)
+@click.argument("regexp", required=False)
+@click.argument("file", required=False)
 def remove(
     regexp: Optional[str],
     file: Optional[str],
@@ -301,7 +337,7 @@ def remove(
         else:
             outfp = outfile
         # Don't use click.echo(), as it modifies ANSI sequences on Windows
-        print(after, end='', file=outfp)
+        print(after, end="", file=outfp)
     else:
         remove_lines_from_file(
             thefile,
@@ -310,5 +346,6 @@ def remove(
             backup_ext=backup_ext,
         )
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()  # pragma: no cover

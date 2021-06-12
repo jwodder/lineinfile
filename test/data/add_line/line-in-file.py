@@ -1,3 +1,3 @@
-line = 'spaced = out'
+line = "spaced = out"
 args = {}
 options = []

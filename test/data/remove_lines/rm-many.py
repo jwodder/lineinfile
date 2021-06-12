@@ -1,1 +1,1 @@
-regexp = r'^foo='
+regexp = r"^foo="
