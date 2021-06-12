@@ -19,7 +19,7 @@ attributes; those must be set externally.
 Visit <https://github.com/jwodder/lineinfile> for more information.
 """
 
-__version__ = "0.4.0"
+__version__ = "0.5.0.dev1"
 __author__ = "John Thorvald Wodder II"
 __author_email__ = "lineinfile@varonathe.org"
 __license__ = "MIT"
@@ -115,7 +115,7 @@ class AtEOF(Inserter):
 
 class PatternInserter(Inserter):
     def __init__(self, pattern: Patternish) -> None:
-        self.pattern: Pattern[str] = ensure_compiled(pattern)
+        self.pattern: Pattern[str] = re.compile(pattern)
 
     def __eq__(self, other: Any) -> bool:
         if type(self) is type(other):
@@ -195,7 +195,7 @@ class BeforeLast(PatternInserter):
 
 class Matcher(ABC):
     def __init__(self, pattern: Patternish) -> None:
-        self.pattern: Pattern[str] = ensure_compiled(pattern)
+        self.pattern: Pattern[str] = re.compile(pattern)
         self.i: Optional[int] = None
         self.m: Optional[Match[str]] = None
 
@@ -419,9 +419,8 @@ def remove_lines_from_string(s: str, regexp: Patternish) -> str:
     ``regexp`` (either a string or a compiled pattern object) and return the
     result.
     """
-    rgx = ensure_compiled(regexp)
     lines = ascii_splitlines(s)
-    lines = [ln for ln in lines if not rgx.search(ln)]
+    lines = [ln for ln in lines if not re.search(regexp, ln)]
     return "".join(lines)
 
 
@@ -460,13 +459,6 @@ def remove_lines_from_file(
         return True
     else:
         return False
-
-
-def ensure_compiled(s_or_re: Patternish) -> Pattern[str]:
-    if isinstance(s_or_re, str):
-        return re.compile(s_or_re)
-    else:
-        return s_or_re
 
 
 def ensure_terminated(s: str) -> str:
