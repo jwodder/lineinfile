@@ -9,13 +9,13 @@ import pytest
 import lineinfile
 from lineinfile import (
     ALWAYS,
+    CHANGED,
     AfterFirst,
     AfterLast,
     AtBOF,
     AtEOF,
     BeforeFirst,
     BeforeLast,
-    CHANGED,
     add_line_to_file,
     add_line_to_string,
     ensure_terminated,

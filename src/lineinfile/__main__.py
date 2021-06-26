@@ -1,7 +1,8 @@
-from typing import Any, Optional, TYPE_CHECKING, TextIO
+from typing import TYPE_CHECKING, Any, Optional, TextIO
 import click
 from . import (
     ALWAYS,
+    CHANGED,
     AfterFirst,
     AfterLast,
     AtBOF,
@@ -9,7 +10,6 @@ from . import (
     BackupWhen,
     BeforeFirst,
     BeforeLast,
-    CHANGED,
     __version__,
     add_line_to_file,
     add_line_to_string,
