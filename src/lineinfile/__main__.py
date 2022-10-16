@@ -1,3 +1,4 @@
+from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Optional, TextIO
 import click
 from . import (
@@ -166,7 +167,7 @@ def add(
     backup_ext: Optional[str],
     create: bool,
     match_first: bool,
-    inserter: Optional["Inserter"] = None,
+    inserter: Optional[Inserter] = None,
     outfile: Optional[TextIO] = None,
 ) -> None:
     """

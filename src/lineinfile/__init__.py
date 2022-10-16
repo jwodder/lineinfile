@@ -19,6 +19,15 @@ attributes; those must be set externally.
 Visit <https://github.com/jwodder/lineinfile> for more information.
 """
 
+from __future__ import annotations
+from abc import ABC, abstractmethod
+from enum import Enum
+import os
+from pathlib import Path
+import re
+from shutil import copystat
+from typing import Any, Optional, Pattern, Union
+
 __version__ = "0.5.0.dev1"
 __author__ = "John Thorvald Wodder II"
 __author_email__ = "lineinfile@varonathe.org"
@@ -41,22 +50,6 @@ __all__ = [
     "remove_lines_from_string",
 ]
 
-from abc import ABC, abstractmethod
-from enum import Enum
-import os
-from pathlib import Path
-import re
-from shutil import copystat
-import sys
-from typing import Any, Optional, Union
-
-if sys.version_info[:2] >= (3, 9):
-    from re import Match, Pattern
-
-    List = list
-else:
-    from typing import List, Match, Pattern
-
 Patternish = Union[str, Pattern[str]]
 
 
@@ -67,7 +60,7 @@ class Inserter(ABC):
     ) -> Optional[int]:
         ...
 
-    def get_feeder(self) -> "LineFeeder":
+    def get_feeder(self) -> LineFeeder:
         return LineFeeder(self)
 
 
@@ -115,7 +108,7 @@ class AtEOF(Inserter):
 
 class PatternInserter(Inserter):
     def __init__(self, pattern: Patternish) -> None:
-        self.pattern: Pattern[str] = re.compile(pattern)
+        self.pattern: re.Pattern[str] = re.compile(pattern)
 
     def __eq__(self, other: Any) -> bool:
         if type(self) is type(other):
@@ -195,9 +188,9 @@ class BeforeLast(PatternInserter):
 
 class Matcher(ABC):
     def __init__(self, pattern: Patternish) -> None:
-        self.pattern: Pattern[str] = re.compile(pattern)
+        self.pattern: re.Pattern[str] = re.compile(pattern)
         self.i: Optional[int] = None
-        self.m: Optional[Match[str]] = None
+        self.m: Optional[re.Match[str]] = None
 
     @abstractmethod
     def feed(self, i: int, line: str) -> None:
@@ -291,7 +284,7 @@ def add_line_to_string(
     not match, the input is left unchanged.  It is an error to set ``backrefs``
     to true without also setting ``regexp``.
     """
-    line_matcher: Union[ExactMatchFirst, ExactMatchLast]
+    line_matcher: ExactMatchFirst | ExactMatchLast
     if match_first:
         line_matcher = ExactMatchFirst(line)
     else:
@@ -337,7 +330,7 @@ def add_line_to_string(
 
 
 def add_line_to_file(
-    filepath: Union[str, bytes, "os.PathLike[str]", "os.PathLike[bytes]"],
+    filepath: str | bytes | os.PathLike[str] | os.PathLike[bytes],
     line: str,
     regexp: Optional[Patternish] = None,
     inserter: Optional[Inserter] = None,
@@ -425,7 +418,7 @@ def remove_lines_from_string(s: str, regexp: Patternish) -> str:
 
 
 def remove_lines_from_file(
-    filepath: Union[str, bytes, "os.PathLike[str]", "os.PathLike[bytes]"],
+    filepath: str | bytes | os.PathLike[str] | os.PathLike[bytes],
     regexp: Patternish,
     backup: Optional[BackupWhen] = None,
     backup_ext: Optional[str] = None,
@@ -471,7 +464,7 @@ def ensure_terminated(s: str) -> str:
 EOL_RGX = re.compile(r"\r\n?|\n")
 
 
-def ascii_splitlines(s: str) -> List[str]:
+def ascii_splitlines(s: str) -> list[str]:
     """
     Like `str.splitlines(True)`, except it only treats LF, CR LF, and CR as
     line endings
