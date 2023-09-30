@@ -203,6 +203,7 @@ def test_backup_symlink_no_change(tmp_path):
 CLI_DEFAULTS = {
     "backup": None,
     "backup_ext": None,
+    "encoding": "utf-8",
 }
 
 

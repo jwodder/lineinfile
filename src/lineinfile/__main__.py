@@ -219,7 +219,7 @@ def add(
             raise click.UsageError(errmsg.format(option="--backup-always"))
         if create:
             raise click.UsageError(errmsg.format(option="--create"))
-        with click.open_file(thefile) as fp:
+        with click.open_file(thefile, encoding="utf-8") as fp:
             before = fp.read()
         after = add_line_to_string(
             before,
@@ -246,6 +246,7 @@ def add(
             backup=backup,
             backup_ext=backup_ext,
             create=create,
+            encoding="utf-8",
         )
 
 
@@ -330,7 +331,7 @@ def remove(
             raise click.UsageError(errmsg.format(option="--backup-changed"))
         if backup is ALWAYS:
             raise click.UsageError(errmsg.format(option="--backup-always"))
-        with click.open_file(thefile) as fp:
+        with click.open_file(thefile, encoding="utf-8") as fp:
             before = fp.read()
         after = remove_lines_from_string(before, theregexp)
         if outfile is None:
@@ -345,6 +346,7 @@ def remove(
             theregexp,
             backup=backup,
             backup_ext=backup_ext,
+            encoding="utf-8",
         )
 
 

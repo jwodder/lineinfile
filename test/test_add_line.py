@@ -306,6 +306,7 @@ CLI_DEFAULTS = {
     "backup": None,
     "backup_ext": None,
     "create": False,
+    "encoding": "utf-8",
 }
 
 
@@ -982,19 +983,13 @@ def test_add_line_to_file_encoding_errors_backup(mocker, tmp_path):
 
 def test_after_first_reusable():
     inserter = AfterFirst("^foo=")
-    assert (
-        add_line_to_string(
-            "foo=bar\n" "bar=baz\n" "baz=quux\n",
-            "gnusto=cleesh",
-            inserter=inserter,
-        )
-        == ("foo=bar\n" "gnusto=cleesh\n" "bar=baz\n" "baz=quux\n")
-    )
-    assert (
-        add_line_to_string(
-            "food=yummy\n" "foo=icky\n" "fo=misspelled\n",
-            "gnusto=cleesh",
-            inserter=inserter,
-        )
-        == ("food=yummy\n" "foo=icky\n" "gnusto=cleesh\n" "fo=misspelled\n")
-    )
+    assert add_line_to_string(
+        "foo=bar\n" "bar=baz\n" "baz=quux\n",
+        "gnusto=cleesh",
+        inserter=inserter,
+    ) == ("foo=bar\n" "gnusto=cleesh\n" "bar=baz\n" "baz=quux\n")
+    assert add_line_to_string(
+        "food=yummy\n" "foo=icky\n" "fo=misspelled\n",
+        "gnusto=cleesh",
+        inserter=inserter,
+    ) == ("food=yummy\n" "foo=icky\n" "gnusto=cleesh\n" "fo=misspelled\n")
