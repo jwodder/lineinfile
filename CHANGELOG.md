@@ -1,6 +1,6 @@
 v0.5.0 (in development)
 -----------------------
-- Support Python 3.10 and 3.11
+- Support Python 3.10, 3.11, and 3.12
 - Drop support for Python 3.6
 - The CLI now always opens files in UTF-8
 
