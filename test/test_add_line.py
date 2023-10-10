@@ -1,11 +1,15 @@
-from collections import namedtuple
+from __future__ import annotations
+from collections.abc import Iterator
+from dataclasses import dataclass
 from operator import attrgetter
 import os
 from pathlib import Path
 from traceback import format_exception
+from typing import Any
 import click
-from click.testing import CliRunner
+from click.testing import CliRunner, Result
 import pytest
+from pytest_mock import MockerFixture
 import lineinfile
 from lineinfile import (
     ALWAYS,
@@ -14,8 +18,10 @@ from lineinfile import (
     AfterLast,
     AtBOF,
     AtEOF,
+    BackupWhen,
     BeforeFirst,
     BeforeLast,
+    Inserter,
     add_line_to_file,
     add_line_to_string,
     ensure_terminated,
@@ -28,14 +34,18 @@ CASES_DIR = Path(__file__).with_name("data") / "add_line"
 INPUT = (CASES_DIR / "input.txt").read_text()
 
 
-class AddLineCase(
-    namedtuple(
-        "AddLineCase",
-        "name input line args options output nonuniversal_lines",
-    )
-):
+@dataclass
+class AddLineCase:
+    name: str
+    input: str
+    line: str
+    args: dict[str, Any]
+    options: list[str]
+    output: str
+    nonuniversal_lines: bool
+
     @property
-    def changed(self):
+    def changed(self) -> bool:
         return self.input != self.output
 
 
@@ -43,9 +53,9 @@ class AddLineCase(
 # inserters contain mutable state.
 
 
-def add_line_cases():
+def add_line_cases() -> Iterator[AddLineCase]:
     for cfgfile in sorted(CASES_DIR.glob("*.py")):
-        cfg = {}
+        cfg: dict[str, Any] = {}
         exec(cfgfile.read_text(), cfg)
         try:
             input_file = cfg["input_file"]
@@ -67,36 +77,37 @@ def add_line_cases():
         )
 
 
-def file_add_line_cases():
+def file_add_line_cases() -> Iterator[AddLineCase]:
     for c in add_line_cases():
         if not c.nonuniversal_lines:
             yield c
 
 
-def listdir(dirpath):
+def listdir(dirpath: Path) -> list[str]:
     return sorted(p.name for p in dirpath.iterdir())
 
 
-def show_result(r):
+def show_result(r: Result) -> str:
     if r.exception is not None:
+        assert isinstance(r.exc_info, tuple)
         return "".join(format_exception(*r.exc_info))
     else:
         return r.output
 
 
 @pytest.mark.parametrize("case", add_line_cases(), ids=attrgetter("name"))
-def test_add_line_to_string(case):
+def test_add_line_to_string(case: AddLineCase) -> None:
     assert add_line_to_string(case.input, case.line, **case.args) == case.output
 
 
-def test_backrefs_no_regexp():
+def test_backrefs_no_regexp() -> None:
     with pytest.raises(ValueError) as excinfo:
         add_line_to_string(INPUT, "gnusto=cleesh", backrefs=True)
     assert str(excinfo.value) == "backrefs=True cannot be given without regexp"
 
 
 @pytest.mark.parametrize("case", file_add_line_cases(), ids=attrgetter("name"))
-def test_add_line_to_file(case, tmp_path):
+def test_add_line_to_file(case: AddLineCase, tmp_path: Path) -> None:
     thefile = tmp_path / "file.txt"
     thefile.write_text(case.input)
     assert add_line_to_file(thefile, case.line, **case.args) == case.changed
@@ -105,7 +116,7 @@ def test_add_line_to_file(case, tmp_path):
 
 
 @pytest.mark.parametrize("case", file_add_line_cases(), ids=attrgetter("name"))
-def test_add_line_to_file_backup_changed(case, tmp_path):
+def test_add_line_to_file_backup_changed(case: AddLineCase, tmp_path: Path) -> None:
     thefile = tmp_path / "file.txt"
     thefile.write_text(case.input)
     assert (
@@ -121,7 +132,9 @@ def test_add_line_to_file_backup_changed(case, tmp_path):
 
 
 @pytest.mark.parametrize("case", file_add_line_cases(), ids=attrgetter("name"))
-def test_add_line_to_file_backup_changed_custom_ext(case, tmp_path):
+def test_add_line_to_file_backup_changed_custom_ext(
+    case: AddLineCase, tmp_path: Path
+) -> None:
     thefile = tmp_path / "file.txt"
     thefile.write_text(case.input)
     assert (
@@ -143,7 +156,7 @@ def test_add_line_to_file_backup_changed_custom_ext(case, tmp_path):
 
 
 @pytest.mark.parametrize("case", file_add_line_cases(), ids=attrgetter("name"))
-def test_add_line_to_file_backup_always(case, tmp_path):
+def test_add_line_to_file_backup_always(case: AddLineCase, tmp_path: Path) -> None:
     thefile = tmp_path / "file.txt"
     thefile.write_text(case.input)
     assert (
@@ -155,7 +168,9 @@ def test_add_line_to_file_backup_always(case, tmp_path):
 
 
 @pytest.mark.parametrize("case", file_add_line_cases(), ids=attrgetter("name"))
-def test_add_line_to_file_backup_always_custom_ext(case, tmp_path):
+def test_add_line_to_file_backup_always_custom_ext(
+    case: AddLineCase, tmp_path: Path
+) -> None:
     thefile = tmp_path / "file.txt"
     thefile.write_text(case.input)
     assert (
@@ -174,7 +189,7 @@ def test_add_line_to_file_backup_always_custom_ext(case, tmp_path):
 
 
 @pytest.mark.parametrize("when", [CHANGED, ALWAYS])
-def test_empty_backup_ext(when):
+def test_empty_backup_ext(when: BackupWhen) -> None:
     with pytest.raises(ValueError) as excinfo:
         add_line_to_file(
             "nonexistent.txt",
@@ -185,7 +200,7 @@ def test_empty_backup_ext(when):
     assert str(excinfo.value) == "Cannot use empty string as backup_ext"
 
 
-def test_file_line_replaces_self(tmp_path):
+def test_file_line_replaces_self(tmp_path: Path) -> None:
     thefile = tmp_path / "file.txt"
     thefile.write_text(INPUT)
     assert not add_line_to_file(
@@ -199,7 +214,7 @@ def test_file_line_replaces_self(tmp_path):
 
 
 @pytest.mark.parametrize("when", [CHANGED, ALWAYS])
-def test_backup_file_exists(tmp_path, when):
+def test_backup_file_exists(tmp_path: Path, when: BackupWhen) -> None:
     thefile = tmp_path / "file.txt"
     thefile.write_text(INPUT)
     (tmp_path / "file.txt.bak").write_text("This will be replaced.\n")
@@ -215,7 +230,7 @@ def test_backup_file_exists(tmp_path, when):
 
 
 @pytest.mark.parametrize("create", [False, True])
-def test_create_file_exists(tmp_path, create):
+def test_create_file_exists(tmp_path: Path, create: bool) -> None:
     thefile = tmp_path / "file.txt"
     thefile.write_text(INPUT)
     assert add_line_to_file(thefile, "gnusto=cleesh", create=create)
@@ -223,14 +238,14 @@ def test_create_file_exists(tmp_path, create):
     assert thefile.read_text() == INPUT + "gnusto=cleesh\n"
 
 
-def test_no_create_file_not_exists(tmp_path):
+def test_no_create_file_not_exists(tmp_path: Path) -> None:
     thefile = tmp_path / "file.txt"
     with pytest.raises(FileNotFoundError):
         add_line_to_file(thefile, "gnusto=cleesh")
     assert listdir(tmp_path) == []
 
 
-def test_create_file_not_exists(tmp_path):
+def test_create_file_not_exists(tmp_path: Path) -> None:
     thefile = tmp_path / "file.txt"
     assert add_line_to_file(thefile, "gnusto=cleesh", create=True)
     assert listdir(tmp_path) == ["file.txt"]
@@ -238,14 +253,14 @@ def test_create_file_not_exists(tmp_path):
 
 
 @pytest.mark.parametrize("when", [CHANGED, ALWAYS])
-def test_create_file_not_exists_backup(tmp_path, when):
+def test_create_file_not_exists_backup(tmp_path: Path, when: BackupWhen) -> None:
     thefile = tmp_path / "file.txt"
     assert add_line_to_file(thefile, "gnusto=cleesh", create=True, backup=when)
     assert listdir(tmp_path) == ["file.txt"]
     assert thefile.read_text() == "gnusto=cleesh\n"
 
 
-def test_create_file_no_change(tmp_path):
+def test_create_file_no_change(tmp_path: Path) -> None:
     thefile = tmp_path / "file.txt"
     assert not add_line_to_file(
         thefile,
@@ -258,7 +273,7 @@ def test_create_file_no_change(tmp_path):
 
 
 @pytest.mark.parametrize("when", [CHANGED, ALWAYS])
-def test_backup_symlink(tmp_path, when):
+def test_backup_symlink(tmp_path: Path, when: BackupWhen) -> None:
     thefile = tmp_path / "file.txt"
     thefile.write_text(INPUT)
     linkfile = tmp_path / "link.txt"
@@ -276,7 +291,7 @@ def test_backup_symlink(tmp_path, when):
     assert thefile.read_text() == INPUT + "gnusto=cleesh\n"
 
 
-def test_backup_symlink_no_change(tmp_path):
+def test_backup_symlink_no_change(tmp_path: Path) -> None:
     thefile = tmp_path / "file.txt"
     thefile.write_text(INPUT)
     linkfile = tmp_path / "link.txt"
@@ -328,7 +343,12 @@ CLI_DEFAULTS = {
         (["--create"], {"create": True}),
     ],
 )
-def test_cli_add(case, backup_opts, backup_args, mocker):
+def test_cli_add(
+    case: AddLineCase,
+    backup_opts: list[str],
+    backup_args: dict[str, Any],
+    mocker: MockerFixture,
+) -> None:
     runner = CliRunner()
     with runner.isolated_filesystem():
         Path("file.txt").touch()
@@ -356,7 +376,9 @@ def test_cli_add(case, backup_opts, backup_args, mocker):
         (["--create"], {"create": True}),
     ],
 )
-def test_cli_add_file_not_exists_no_error(backup_opts, backup_args, mocker):
+def test_cli_add_file_not_exists_no_error(
+    backup_opts: list[str], backup_args: dict[str, Any], mocker: MockerFixture
+) -> None:
     runner = CliRunner()
     with runner.isolated_filesystem():
         add_line_mock = mocker.patch(
@@ -400,7 +422,9 @@ def test_cli_add_file_not_exists_no_error(backup_opts, backup_args, mocker):
         ),
     ],
 )
-def test_cli_add_inserter_options(opts, inserter, mocker):
+def test_cli_add_inserter_options(
+    opts: list[str], inserter: Inserter | None, mocker: MockerFixture
+) -> None:
     runner = CliRunner()
     with runner.isolated_filesystem():
         Path("file.txt").touch()
@@ -431,7 +455,9 @@ def test_cli_add_inserter_options(opts, inserter, mocker):
         (["-M", "-m", "-M"], False),
     ],
 )
-def test_cli_add_match_options(opts, match_first, mocker):
+def test_cli_add_match_options(
+    opts: list[str], match_first: bool, mocker: MockerFixture
+) -> None:
     runner = CliRunner()
     with runner.isolated_filesystem():
         Path("file.txt").touch()
@@ -450,7 +476,7 @@ def test_cli_add_match_options(opts, match_first, mocker):
     add_line_mock.assert_called_once_with("file.txt", "gnusto=cleesh", **args)
 
 
-def test_cli_add_backrefs_no_regex(mocker):
+def test_cli_add_backrefs_no_regex(mocker: MockerFixture) -> None:
     runner = CliRunner()
     with runner.isolated_filesystem():
         Path("file.txt").touch()
@@ -469,7 +495,7 @@ def test_cli_add_backrefs_no_regex(mocker):
     add_line_mock.assert_not_called()
 
 
-def test_cli_add_empty_backup_ext(mocker):
+def test_cli_add_empty_backup_ext(mocker: MockerFixture) -> None:
     runner = CliRunner()
     with runner.isolated_filesystem():
         Path("file.txt").touch()
@@ -490,7 +516,9 @@ def test_cli_add_empty_backup_ext(mocker):
 
 @pytest.mark.parametrize("case", file_add_line_cases(), ids=attrgetter("name"))
 @pytest.mark.parametrize("input_args", [[], ["-"]])
-def test_cli_add_stdin(case, input_args, mocker):
+def test_cli_add_stdin(
+    case: AddLineCase, input_args: list[str], mocker: MockerFixture
+) -> None:
     runner = CliRunner()
     with runner.isolated_filesystem():
         Path("-").touch()
@@ -528,7 +556,9 @@ def test_cli_add_stdin(case, input_args, mocker):
         ("--create", "--create"),
     ],
 )
-def test_cli_add_stdin_bad_file_args(file_arg, err_arg, input_args, mocker):
+def test_cli_add_stdin_bad_file_args(
+    file_arg: str, err_arg: str, input_args: list[str], mocker: MockerFixture
+) -> None:
     runner = CliRunner()
     with runner.isolated_filesystem():
         Path("file.txt").touch()
@@ -554,7 +584,7 @@ def test_cli_add_stdin_bad_file_args(file_arg, err_arg, input_args, mocker):
 
 
 @pytest.mark.parametrize("case", file_add_line_cases(), ids=attrgetter("name"))
-def test_cli_add_outfile(case, mocker):
+def test_cli_add_outfile(case: AddLineCase, mocker: MockerFixture) -> None:
     runner = CliRunner()
     with runner.isolated_filesystem():
         thefile = Path("file.txt")
@@ -585,7 +615,9 @@ def test_cli_add_outfile(case, mocker):
 
 @pytest.mark.parametrize("case", file_add_line_cases(), ids=attrgetter("name"))
 @pytest.mark.parametrize("input_args", [[], ["-"]])
-def test_cli_add_stdin_outfile(case, input_args, mocker):
+def test_cli_add_stdin_outfile(
+    case: AddLineCase, input_args: list[str], mocker: MockerFixture
+) -> None:
     runner = CliRunner()
     with runner.isolated_filesystem():
         Path("-").touch()
@@ -616,7 +648,7 @@ def test_cli_add_stdin_outfile(case, input_args, mocker):
 
 
 @pytest.mark.parametrize("case", file_add_line_cases(), ids=attrgetter("name"))
-def test_cli_add_outfile_stdout(case, mocker):
+def test_cli_add_outfile_stdout(case: AddLineCase, mocker: MockerFixture) -> None:
     runner = CliRunner()
     with runner.isolated_filesystem():
         thefile = Path("file.txt")
@@ -654,7 +686,9 @@ def test_cli_add_outfile_stdout(case, mocker):
         ("--create", "--create"),
     ],
 )
-def test_cli_add_outfile_bad_file_args(file_arg, err_arg, mocker):
+def test_cli_add_outfile_bad_file_args(
+    file_arg: str, err_arg: str, mocker: MockerFixture
+) -> None:
     runner = CliRunner()
     with runner.isolated_filesystem():
         Path("file.txt").touch()
@@ -677,7 +711,7 @@ def test_cli_add_outfile_bad_file_args(file_arg, err_arg, mocker):
 
 
 @pytest.mark.parametrize("case", file_add_line_cases(), ids=attrgetter("name"))
-def test_cli_add_outfile_is_infile(case, mocker):
+def test_cli_add_outfile_is_infile(case: AddLineCase, mocker: MockerFixture) -> None:
     runner = CliRunner()
     with runner.isolated_filesystem():
         thefile = Path("file.txt")
@@ -731,7 +765,7 @@ def test_cli_add_outfile_is_infile(case, mocker):
         (r"\N{SNOWMAN}", "\u2603"),
     ],
 )
-def test_cli_add_backslashed(escline, line, mocker):
+def test_cli_add_backslashed(escline: str, line: str, mocker: MockerFixture) -> None:
     runner = CliRunner()
     with runner.isolated_filesystem():
         thefile = Path("file.txt")
@@ -803,7 +837,9 @@ def test_cli_add_backslashed(escline, line, mocker):
         ),
     ],
 )
-def test_cli_add_backslashed_backrefs(escline, line, mocker):
+def test_cli_add_backslashed_backrefs(
+    escline: str, line: str, mocker: MockerFixture
+) -> None:
     runner = CliRunner()
     with runner.isolated_filesystem():
         thefile = Path("file.txt")
@@ -830,7 +866,7 @@ def test_cli_add_backslashed_backrefs(escline, line, mocker):
         "--gnusto=cleesh",
     ],
 )
-def test_cli_add_line_opt_file(line, mocker):
+def test_cli_add_line_opt_file(line: str, mocker: MockerFixture) -> None:
     runner = CliRunner()
     with runner.isolated_filesystem():
         Path("file.txt").touch()
@@ -857,7 +893,9 @@ def test_cli_add_line_opt_file(line, mocker):
     ],
 )
 @pytest.mark.parametrize("input_args", [[], ["-"]])
-def test_cli_add_line_opt_stdin(input_args, line, mocker):
+def test_cli_add_line_opt_stdin(
+    input_args: list[str], line: str, mocker: MockerFixture
+) -> None:
     runner = CliRunner()
     output = INPUT + line + "\n"
     with runner.isolated_filesystem():
@@ -882,7 +920,7 @@ def test_cli_add_line_opt_stdin(input_args, line, mocker):
     add_line_str_mock.assert_called_once_with(INPUT, line, **STRING_DEFAULTS)
 
 
-def test_cli_add_line_opt_two_args(mocker):
+def test_cli_add_line_opt_two_args(mocker: MockerFixture) -> None:
     runner = CliRunner()
     with runner.isolated_filesystem():
         Path("file.txt").touch()
@@ -901,7 +939,7 @@ def test_cli_add_line_opt_two_args(mocker):
     add_line_mock.assert_not_called()
 
 
-def test_cli_add_no_line_opt_no_args(mocker):
+def test_cli_add_no_line_opt_no_args(mocker: MockerFixture) -> None:
     runner = CliRunner()
     with runner.isolated_filesystem():
         add_line_mock = mocker.patch(
@@ -915,7 +953,7 @@ def test_cli_add_no_line_opt_no_args(mocker):
     add_line_mock.assert_not_called()
 
 
-def test_add_line_to_file_encoding(mocker, tmp_path):
+def test_add_line_to_file_encoding(mocker: MockerFixture, tmp_path: Path) -> None:
     thefile = tmp_path / "file.txt"
     thefile.write_text(INPUT, encoding="utf-16")
     add_line_str_spy = mocker.spy(lineinfile, "add_line_to_string")
@@ -929,7 +967,9 @@ def test_add_line_to_file_encoding(mocker, tmp_path):
     assert thefile.read_text(encoding="utf-16") == INPUT + "gnusto=cleesh\n"
 
 
-def test_add_line_to_file_encoding_errors(mocker, tmp_path):
+def test_add_line_to_file_encoding_errors(
+    mocker: MockerFixture, tmp_path: Path
+) -> None:
     thefile = tmp_path / "file.txt"
     thefile.write_text(
         "edh=\xF0\na-tilde-degrees=\xC3\xB0\n",
@@ -953,7 +993,9 @@ def test_add_line_to_file_encoding_errors(mocker, tmp_path):
     )
 
 
-def test_add_line_to_file_encoding_errors_backup(mocker, tmp_path):
+def test_add_line_to_file_encoding_errors_backup(
+    mocker: MockerFixture, tmp_path: Path
+) -> None:
     thefile = tmp_path / "file.txt"
     thefile.write_text(
         "edh=\xF0\na-tilde-degrees=\xC3\xB0\n",
@@ -981,7 +1023,7 @@ def test_add_line_to_file_encoding_errors_backup(mocker, tmp_path):
     )
 
 
-def test_after_first_reusable():
+def test_after_first_reusable() -> None:
     inserter = AfterFirst("^foo=")
     assert (
         add_line_to_string(

@@ -1,13 +1,23 @@
-from collections import namedtuple
+from __future__ import annotations
+from collections.abc import Iterator
+from dataclasses import dataclass
 from operator import attrgetter
 import os
 from pathlib import Path
 from traceback import format_exception
+from typing import Any
 import click
-from click.testing import CliRunner
+from click.testing import CliRunner, Result
 import pytest
+from pytest_mock import MockerFixture
 import lineinfile
-from lineinfile import ALWAYS, CHANGED, remove_lines_from_file, remove_lines_from_string
+from lineinfile import (
+    ALWAYS,
+    CHANGED,
+    BackupWhen,
+    remove_lines_from_file,
+    remove_lines_from_string,
+)
 from lineinfile.__main__ import main
 
 CASES_DIR = Path(__file__).with_name("data") / "remove_lines"
@@ -15,15 +25,21 @@ CASES_DIR = Path(__file__).with_name("data") / "remove_lines"
 INPUT = (CASES_DIR / "input.txt").read_text()
 
 
-class RemoveLinesCase(namedtuple("RemoveLinesCase", "name input regexp output")):
+@dataclass
+class RemoveLinesCase:
+    name: str
+    input: str
+    regexp: str
+    output: str
+
     @property
-    def changed(self):
+    def changed(self) -> bool:
         return self.input != self.output
 
 
-def remove_lines_cases():
+def remove_lines_cases() -> Iterator[RemoveLinesCase]:
     for cfgfile in sorted(CASES_DIR.glob("*.py")):
-        cfg = {}
+        cfg: dict[str, Any] = {}
         exec(cfgfile.read_text(), cfg)
         try:
             input_file = cfg["input_file"]
@@ -42,12 +58,13 @@ def remove_lines_cases():
         )
 
 
-def listdir(dirpath):
+def listdir(dirpath: Path) -> list[str]:
     return sorted(p.name for p in dirpath.iterdir())
 
 
-def show_result(r):
+def show_result(r: Result) -> str:
     if r.exception is not None:
+        assert isinstance(r.exc_info, tuple)
         return "".join(format_exception(*r.exc_info))
     else:
         return r.output
@@ -60,12 +77,12 @@ NO_CHANGE_CASE = next(c for c in REMOVE_LINES_CASES if not c.changed)
 
 
 @pytest.mark.parametrize("case", REMOVE_LINES_CASES, ids=attrgetter("name"))
-def test_remove_lines_from_string(case):
+def test_remove_lines_from_string(case: RemoveLinesCase) -> None:
     assert remove_lines_from_string(case.input, case.regexp) == case.output
 
 
 @pytest.mark.parametrize("case", REMOVE_LINES_CASES, ids=attrgetter("name"))
-def test_remove_lines_from_file(case, tmp_path):
+def test_remove_lines_from_file(case: RemoveLinesCase, tmp_path: Path) -> None:
     thefile = tmp_path / "file.txt"
     thefile.write_text(case.input)
     assert remove_lines_from_file(thefile, case.regexp) == case.changed
@@ -74,7 +91,9 @@ def test_remove_lines_from_file(case, tmp_path):
 
 
 @pytest.mark.parametrize("case", REMOVE_LINES_CASES, ids=attrgetter("name"))
-def test_remove_lines_from_file_backup_changed(case, tmp_path):
+def test_remove_lines_from_file_backup_changed(
+    case: RemoveLinesCase, tmp_path: Path
+) -> None:
     thefile = tmp_path / "file.txt"
     thefile.write_text(case.input)
     assert remove_lines_from_file(thefile, case.regexp, backup=CHANGED) == case.changed
@@ -87,7 +106,9 @@ def test_remove_lines_from_file_backup_changed(case, tmp_path):
 
 
 @pytest.mark.parametrize("case", REMOVE_LINES_CASES, ids=attrgetter("name"))
-def test_remove_lines_from_file_backup_changed_custom_ext(case, tmp_path):
+def test_remove_lines_from_file_backup_changed_custom_ext(
+    case: RemoveLinesCase, tmp_path: Path
+) -> None:
     thefile = tmp_path / "file.txt"
     thefile.write_text(case.input)
     assert (
@@ -108,7 +129,9 @@ def test_remove_lines_from_file_backup_changed_custom_ext(case, tmp_path):
 
 
 @pytest.mark.parametrize("case", REMOVE_LINES_CASES, ids=attrgetter("name"))
-def test_remove_lines_from_file_backup_always(case, tmp_path):
+def test_remove_lines_from_file_backup_always(
+    case: RemoveLinesCase, tmp_path: Path
+) -> None:
     thefile = tmp_path / "file.txt"
     thefile.write_text(case.input)
     assert remove_lines_from_file(thefile, case.regexp, backup=ALWAYS) == case.changed
@@ -118,7 +141,9 @@ def test_remove_lines_from_file_backup_always(case, tmp_path):
 
 
 @pytest.mark.parametrize("case", REMOVE_LINES_CASES, ids=attrgetter("name"))
-def test_remove_lines_from_file_backup_always_custom_ext(case, tmp_path):
+def test_remove_lines_from_file_backup_always_custom_ext(
+    case: RemoveLinesCase, tmp_path: Path
+) -> None:
     thefile = tmp_path / "file.txt"
     thefile.write_text(case.input)
     assert (
@@ -136,7 +161,7 @@ def test_remove_lines_from_file_backup_always_custom_ext(case, tmp_path):
 
 
 @pytest.mark.parametrize("when", [CHANGED, ALWAYS])
-def test_empty_backup_ext(when):
+def test_empty_backup_ext(when: BackupWhen) -> None:
     with pytest.raises(ValueError) as excinfo:
         remove_lines_from_file(
             "nonexistent.txt",
@@ -148,7 +173,7 @@ def test_empty_backup_ext(when):
 
 
 @pytest.mark.parametrize("when", [CHANGED, ALWAYS])
-def test_backup_file_exists(tmp_path, when):
+def test_backup_file_exists(tmp_path: Path, when: BackupWhen) -> None:
     thefile = tmp_path / "file.txt"
     thefile.write_text(CHANGE_CASE.input)
     (tmp_path / "file.txt.bak").write_text("This will be replaced.\n")
@@ -164,7 +189,7 @@ def test_backup_file_exists(tmp_path, when):
 
 
 @pytest.mark.parametrize("when", [CHANGED, ALWAYS])
-def test_backup_symlink(tmp_path, when):
+def test_backup_symlink(tmp_path: Path, when: BackupWhen) -> None:
     thefile = tmp_path / "file.txt"
     thefile.write_text(CHANGE_CASE.input)
     linkfile = tmp_path / "link.txt"
@@ -182,7 +207,7 @@ def test_backup_symlink(tmp_path, when):
     assert thefile.read_text() == CHANGE_CASE.output
 
 
-def test_backup_symlink_no_change(tmp_path):
+def test_backup_symlink_no_change(tmp_path: Path) -> None:
     thefile = tmp_path / "file.txt"
     thefile.write_text(NO_CHANGE_CASE.input)
     linkfile = tmp_path / "link.txt"
@@ -223,7 +248,9 @@ CLI_DEFAULTS = {
         (["--backup-always", "--backup-changed"], {"backup": CHANGED}),
     ],
 )
-def test_cli_remove(opts, args, mocker):
+def test_cli_remove(
+    opts: list[str], args: dict[str, Any], mocker: MockerFixture
+) -> None:
     runner = CliRunner()
     with runner.isolated_filesystem():
         Path("file.txt").touch()
@@ -242,7 +269,7 @@ def test_cli_remove(opts, args, mocker):
     remove_lines_mock.assert_called_once_with("file.txt", "^foo=", **fargs)
 
 
-def test_cli_remove_empty_backup_ext(mocker):
+def test_cli_remove_empty_backup_ext(mocker: MockerFixture) -> None:
     runner = CliRunner()
     with runner.isolated_filesystem():
         Path("file.txt").touch()
@@ -262,7 +289,7 @@ def test_cli_remove_empty_backup_ext(mocker):
 
 
 @pytest.mark.parametrize("input_args", [[], ["-"]])
-def test_cli_remove_stdin(input_args, mocker):
+def test_cli_remove_stdin(input_args: list[str], mocker: MockerFixture) -> None:
     runner = CliRunner()
     output = remove_lines_from_string(INPUT, "^foo=")
     with runner.isolated_filesystem():
@@ -297,7 +324,9 @@ def test_cli_remove_stdin(input_args, mocker):
         ("-i.bak", "--backup-ext"),
     ],
 )
-def test_cli_remove_stdin_bad_file_args(file_arg, err_arg, input_args, mocker):
+def test_cli_remove_stdin_bad_file_args(
+    file_arg: str, err_arg: str, input_args: list[str], mocker: MockerFixture
+) -> None:
     runner = CliRunner()
     with runner.isolated_filesystem():
         Path("file.txt").touch()
@@ -322,7 +351,7 @@ def test_cli_remove_stdin_bad_file_args(file_arg, err_arg, input_args, mocker):
     remove_lines_str_mock.assert_not_called()
 
 
-def test_cli_remove_outfile(mocker):
+def test_cli_remove_outfile(mocker: MockerFixture) -> None:
     runner = CliRunner()
     output = remove_lines_from_string(INPUT, "^foo=")
     with runner.isolated_filesystem():
@@ -350,7 +379,7 @@ def test_cli_remove_outfile(mocker):
 
 
 @pytest.mark.parametrize("input_args", [[], ["-"]])
-def test_cli_remove_stdin_outfile(input_args, mocker):
+def test_cli_remove_stdin_outfile(input_args: list[str], mocker: MockerFixture) -> None:
     runner = CliRunner()
     output = remove_lines_from_string(INPUT, "^foo=")
     with runner.isolated_filesystem():
@@ -377,7 +406,7 @@ def test_cli_remove_stdin_outfile(input_args, mocker):
     remove_lines_str_mock.assert_called_once_with(INPUT, "^foo=")
 
 
-def test_cli_remove_outfile_stdout(mocker):
+def test_cli_remove_outfile_stdout(mocker: MockerFixture) -> None:
     runner = CliRunner()
     output = remove_lines_from_string(INPUT, "^foo=")
     with runner.isolated_filesystem():
@@ -412,7 +441,9 @@ def test_cli_remove_outfile_stdout(mocker):
         ("-i.bak", "--backup-ext"),
     ],
 )
-def test_cli_remove_outfile_bad_file_args(file_arg, err_arg, mocker):
+def test_cli_remove_outfile_bad_file_args(
+    file_arg: str, err_arg: str, mocker: MockerFixture
+) -> None:
     runner = CliRunner()
     with runner.isolated_filesystem():
         Path("file.txt").touch()
@@ -434,7 +465,7 @@ def test_cli_remove_outfile_bad_file_args(file_arg, err_arg, mocker):
     remove_lines_str_mock.assert_not_called()
 
 
-def test_cli_remove_outfile_is_infile(mocker):
+def test_cli_remove_outfile_is_infile(mocker: MockerFixture) -> None:
     runner = CliRunner()
     output = remove_lines_from_string(INPUT, "^foo=")
     with runner.isolated_filesystem():
@@ -461,7 +492,7 @@ def test_cli_remove_outfile_is_infile(mocker):
 
 
 @pytest.mark.parametrize("regexp", ["^foo=", "-Lfoo=", "--foo=bar"])
-def test_cli_remove_regexp_opt_file(regexp, mocker):
+def test_cli_remove_regexp_opt_file(regexp: str, mocker: MockerFixture) -> None:
     runner = CliRunner()
     with runner.isolated_filesystem():
         Path("file.txt").touch()
@@ -481,7 +512,9 @@ def test_cli_remove_regexp_opt_file(regexp, mocker):
 
 @pytest.mark.parametrize("regexp", ["^foo=", "-Lfoo=", "--foo=bar"])
 @pytest.mark.parametrize("input_args", [[], ["-"]])
-def test_cli_remove_regexp_opt_stdin(input_args, regexp, mocker):
+def test_cli_remove_regexp_opt_stdin(
+    input_args: list[str], regexp: str, mocker: MockerFixture
+) -> None:
     runner = CliRunner()
     output = remove_lines_from_string(INPUT, regexp)
     with runner.isolated_filesystem():
@@ -506,7 +539,7 @@ def test_cli_remove_regexp_opt_stdin(input_args, regexp, mocker):
     remove_lines_str_mock.assert_called_once_with(INPUT, regexp)
 
 
-def test_cli_remove_regexp_opt_two_args(mocker):
+def test_cli_remove_regexp_opt_two_args(mocker: MockerFixture) -> None:
     runner = CliRunner()
     with runner.isolated_filesystem():
         Path("file.txt").touch()
@@ -525,7 +558,7 @@ def test_cli_remove_regexp_opt_two_args(mocker):
     remove_lines_mock.assert_not_called()
 
 
-def test_cli_remove_no_regexp_opt_no_args(mocker):
+def test_cli_remove_no_regexp_opt_no_args(mocker: MockerFixture) -> None:
     runner = CliRunner()
     with runner.isolated_filesystem():
         remove_lines_mock = mocker.patch(
@@ -539,7 +572,7 @@ def test_cli_remove_no_regexp_opt_no_args(mocker):
     remove_lines_mock.assert_not_called()
 
 
-def test_remove_lines_from_file_encoding(mocker, tmp_path):
+def test_remove_lines_from_file_encoding(mocker: MockerFixture, tmp_path: Path) -> None:
     thefile = tmp_path / "file.txt"
     thefile.write_text(INPUT, encoding="utf-16")
     remove_lines_str_spy = mocker.spy(lineinfile, "remove_lines_from_string")
@@ -551,7 +584,9 @@ def test_remove_lines_from_file_encoding(mocker, tmp_path):
     )
 
 
-def test_remove_lines_from_file_encoding_errors(mocker, tmp_path):
+def test_remove_lines_from_file_encoding_errors(
+    mocker: MockerFixture, tmp_path: Path
+) -> None:
     thefile = tmp_path / "file.txt"
     thefile.write_text(
         "edh=\xF0\na-tilde-degrees=\xC3\xB0\n",
@@ -572,7 +607,9 @@ def test_remove_lines_from_file_encoding_errors(mocker, tmp_path):
     assert thefile.read_text(encoding="latin-1") == "a-tilde-degrees=\xC3\xB0\n"
 
 
-def test_remove_lines_from_file_encoding_errors_backup(mocker, tmp_path):
+def test_remove_lines_from_file_encoding_errors_backup(
+    mocker: MockerFixture, tmp_path: Path
+) -> None:
     thefile = tmp_path / "file.txt"
     thefile.write_text(
         "edh=\xF0\na-tilde-degrees=\xC3\xB0\n",

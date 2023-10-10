@@ -1,3 +1,4 @@
+from __future__ import annotations
 import pytest
 from lineinfile import ascii_splitlines, chomp, ensure_terminated, unescape
 
@@ -27,7 +28,7 @@ from lineinfile import ascii_splitlines, chomp, ensure_terminated, unescape
         ),
     ],
 )
-def test_ascii_splitlines(s, lines):
+def test_ascii_splitlines(s: str, lines: list[str]) -> None:
     assert ascii_splitlines(s) == lines
 
 
@@ -43,7 +44,7 @@ def test_ascii_splitlines(s, lines):
         ("foobar\nbaz", "foobar\nbaz"),
     ],
 )
-def test_chomp(s, chomped):
+def test_chomp(s: str, chomped: str) -> None:
     assert chomp(s) == chomped
 
 
@@ -58,7 +59,7 @@ def test_chomp(s, chomped):
         ("foo\nbar", "foo\nbar\n"),
     ],
 )
-def test_ensure_terminated(s, terminated):
+def test_ensure_terminated(s: str, terminated: str) -> None:
     assert ensure_terminated(s) == terminated
 
 
@@ -89,5 +90,5 @@ def test_ensure_terminated(s, terminated):
         (r"\N{SNOWMAN}", "\u2603"),
     ],
 )
-def test_unescape(src, dest):
+def test_unescape(src: str, dest: str) -> None:
     assert unescape(src) == dest
