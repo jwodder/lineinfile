@@ -554,7 +554,7 @@ def test_remove_lines_from_file_encoding(mocker, tmp_path):
 def test_remove_lines_from_file_encoding_errors(mocker, tmp_path):
     thefile = tmp_path / "file.txt"
     thefile.write_text(
-        "edh=\xF0\n" "a-tilde-degrees=\xC3\xB0\n",
+        "edh=\xF0\na-tilde-degrees=\xC3\xB0\n",
         encoding="latin-1",
     )
     remove_lines_str_spy = mocker.spy(lineinfile, "remove_lines_from_string")
@@ -565,7 +565,7 @@ def test_remove_lines_from_file_encoding_errors(mocker, tmp_path):
         errors="surrogateescape",
     )
     remove_lines_str_spy.assert_called_once_with(
-        "edh=\uDCF0\n" "a-tilde-degrees=\xF0\n",
+        "edh=\uDCF0\na-tilde-degrees=\xF0\n",
         "\uDCF0",
     )
     assert listdir(tmp_path) == ["file.txt"]
@@ -575,7 +575,7 @@ def test_remove_lines_from_file_encoding_errors(mocker, tmp_path):
 def test_remove_lines_from_file_encoding_errors_backup(mocker, tmp_path):
     thefile = tmp_path / "file.txt"
     thefile.write_text(
-        "edh=\xF0\n" "a-tilde-degrees=\xC3\xB0\n",
+        "edh=\xF0\na-tilde-degrees=\xC3\xB0\n",
         encoding="latin-1",
     )
     remove_lines_str_spy = mocker.spy(lineinfile, "remove_lines_from_string")
@@ -587,11 +587,11 @@ def test_remove_lines_from_file_encoding_errors_backup(mocker, tmp_path):
         backup=CHANGED,
     )
     remove_lines_str_spy.assert_called_once_with(
-        "edh=\uDCF0\n" "a-tilde-degrees=\xF0\n",
+        "edh=\uDCF0\na-tilde-degrees=\xF0\n",
         "\xF0",
     )
     assert listdir(tmp_path) == ["file.txt", "file.txt~"]
     assert thefile.read_text(encoding="latin-1") == "edh=\xF0\n"
     assert thefile.with_name(thefile.name + "~").read_text(encoding="latin-1") == (
-        "edh=\xF0\n" "a-tilde-degrees=\xC3\xB0\n"
+        "edh=\xF0\na-tilde-degrees=\xC3\xB0\n"
     )
