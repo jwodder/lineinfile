@@ -29,7 +29,7 @@ def set_inserter(ctx: click.Context, _param: click.Parameter, value: Any) -> Any
     return value
 
 
-@click.group()
+@click.group(context_settings={"help_option_names": ["-h", "--help"]})
 @click.version_option(
     __version__,
     "-V",
