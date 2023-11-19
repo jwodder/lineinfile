@@ -4,6 +4,7 @@ v0.5.0 (in development)
 - Drop support for Python 3.6
 - The CLI now always opens files in UTF-8
 - Add type annotations to tests
+- Migrated from setuptools to hatch
 
 v0.4.0 (2021-05-12)
 -------------------
