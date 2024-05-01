@@ -57,8 +57,7 @@ class Inserter(ABC):
     @abstractmethod
     def update_state(
         self, state: Optional[int], lineno: int, line: str
-    ) -> Optional[int]:
-        ...
+    ) -> Optional[int]: ...
 
     def get_feeder(self) -> LineFeeder:
         return LineFeeder(self)
@@ -193,8 +192,7 @@ class Matcher(ABC):
         self.m: Optional[re.Match[str]] = None
 
     @abstractmethod
-    def feed(self, i: int, line: str) -> None:
-        ...
+    def feed(self, i: int, line: str) -> None: ...
 
     def get_index(self) -> Optional[int]:
         return self.i
