@@ -1,3 +1,8 @@
+v0.4.2 (in development)
+-----------------------
+- Exclude click v8.2.2 from dependencies due to breakage caused by
+  https://github.com/pallets/click/issues/3024
+
 v0.4.1 (2024-12-01)
 -------------------
 - Support Python 3.10, 3.11, 3.12, and 3.13

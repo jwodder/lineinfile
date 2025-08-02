@@ -28,7 +28,7 @@ import re
 from shutil import copystat
 from typing import Any, Optional, Pattern, Union
 
-__version__ = "0.4.1"
+__version__ = "0.4.2.dev1"
 __author__ = "John Thorvald Wodder II"
 __author_email__ = "lineinfile@varonathe.org"
 __license__ = "MIT"
