@@ -19,10 +19,10 @@ from lineinfile import ascii_splitlines, chomp, ensure_terminated, unescape
         ("foo\n\nbar", ["foo\n", "\n", "bar"]),
         ("foo\n\nbar\n", ["foo\n", "\n", "bar\n"]),
         (
-            "Why\vare\fthere\x1Cso\x1Ddang\x1Emany\x85line\u2028separator\u2029"
+            "Why\vare\fthere\x1cso\x1ddang\x1emany\x85line\u2028separator\u2029"
             "characters?",
             [
-                "Why\vare\fthere\x1Cso\x1Ddang\x1Emany\x85line\u2028separator\u2029"
+                "Why\vare\fthere\x1cso\x1ddang\x1emany\x85line\u2028separator\u2029"
                 "characters?"
             ],
         ),
@@ -82,11 +82,11 @@ def test_ensure_terminated(s: str, terminated: str) -> None:
         (r"foo\rbar", "foo\rbar"),
         (r"foo\tbar", "foo\tbar"),
         (r"foo\vbar", "foo\vbar"),
-        (r"\U0001F410", "\U0001F410"),
+        (r"\U0001F410", "\U0001f410"),
         ("åéîøü", "åéîøü"),
         (r"\u2603", "\u2603"),
         ("\u2603", "\u2603"),
-        ("\U0001F410", "\U0001F410"),
+        ("\U0001f410", "\U0001f410"),
         (r"\N{SNOWMAN}", "\u2603"),
     ],
 )

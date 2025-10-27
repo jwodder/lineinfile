@@ -757,11 +757,11 @@ def test_cli_add_outfile_is_infile(case: AddLineCase, mocker: MockerFixture) -> 
         (r"foo\fbar", "foo\fbar"),
         (r"foo\tbar", "foo\tbar"),
         (r"foo\vbar", "foo\vbar"),
-        (r"\U0001F410", "\U0001F410"),
+        (r"\U0001F410", "\U0001f410"),
         ("åéîøü", "åéîøü"),
         (r"\u2603", "\u2603"),
         ("\u2603", "\u2603"),
-        ("\U0001F410", "\U0001F410"),
+        ("\U0001f410", "\U0001f410"),
         (r"\N{SNOWMAN}", "\u2603"),
     ],
 )
@@ -819,7 +819,7 @@ def test_cli_add_backslashed(escline: str, line: str, mocker: MockerFixture) -> 
         (r"foo\vbar", "foo\vbar"),
         pytest.param(
             r"\U0001F410",
-            "\U0001F410",
+            "\U0001f410",
             marks=pytest.mark.xfail(reason="Not supported by Match.expand()"),
         ),
         ("åéîøü", "åéîøü"),
@@ -829,7 +829,7 @@ def test_cli_add_backslashed(escline: str, line: str, mocker: MockerFixture) -> 
             marks=pytest.mark.xfail(reason="Not supported by Match.expand()"),
         ),
         ("\u2603", "\u2603"),
-        ("\U0001F410", "\U0001F410"),
+        ("\U0001f410", "\U0001f410"),
         pytest.param(
             r"\N{SNOWMAN}",
             "\u2603",
@@ -972,24 +972,24 @@ def test_add_line_to_file_encoding_errors(
 ) -> None:
     thefile = tmp_path / "file.txt"
     thefile.write_text(
-        "edh=\xF0\na-tilde-degrees=\xC3\xB0\n",
+        "edh=\xf0\na-tilde-degrees=\xc3\xb0\n",
         encoding="latin-1",
     )
     add_line_str_spy = mocker.spy(lineinfile, "add_line_to_string")
     assert add_line_to_file(
         thefile,
-        "edh=\xF0",
+        "edh=\xf0",
         encoding="utf-8",
         errors="surrogateescape",
     )
     add_line_str_spy.assert_called_once_with(
-        "edh=\uDCF0\na-tilde-degrees=\xF0\n",
-        "edh=\xF0",
+        "edh=\udcf0\na-tilde-degrees=\xf0\n",
+        "edh=\xf0",
         **STRING_DEFAULTS,
     )
     assert listdir(tmp_path) == ["file.txt"]
     assert thefile.read_text(encoding="latin-1") == (
-        "edh=\xF0\na-tilde-degrees=\xC3\xB0\nedh=\xC3\xB0\n"
+        "edh=\xf0\na-tilde-degrees=\xc3\xb0\nedh=\xc3\xb0\n"
     )
 
 
@@ -998,28 +998,28 @@ def test_add_line_to_file_encoding_errors_backup(
 ) -> None:
     thefile = tmp_path / "file.txt"
     thefile.write_text(
-        "edh=\xF0\na-tilde-degrees=\xC3\xB0\n",
+        "edh=\xf0\na-tilde-degrees=\xc3\xb0\n",
         encoding="latin-1",
     )
     add_line_str_spy = mocker.spy(lineinfile, "add_line_to_string")
     assert add_line_to_file(
         thefile,
-        "edh=\xF0",
+        "edh=\xf0",
         encoding="utf-8",
         errors="surrogateescape",
         backup=CHANGED,
     )
     add_line_str_spy.assert_called_once_with(
-        "edh=\uDCF0\na-tilde-degrees=\xF0\n",
-        "edh=\xF0",
+        "edh=\udcf0\na-tilde-degrees=\xf0\n",
+        "edh=\xf0",
         **STRING_DEFAULTS,
     )
     assert listdir(tmp_path) == ["file.txt", "file.txt~"]
     assert thefile.read_text(encoding="latin-1") == (
-        "edh=\xF0\na-tilde-degrees=\xC3\xB0\nedh=\xC3\xB0\n"
+        "edh=\xf0\na-tilde-degrees=\xc3\xb0\nedh=\xc3\xb0\n"
     )
     assert thefile.with_name(thefile.name + "~").read_text(encoding="latin-1") == (
-        "edh=\xF0\na-tilde-degrees=\xC3\xB0\n"
+        "edh=\xf0\na-tilde-degrees=\xc3\xb0\n"
     )
 
 

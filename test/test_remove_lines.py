@@ -589,22 +589,22 @@ def test_remove_lines_from_file_encoding_errors(
 ) -> None:
     thefile = tmp_path / "file.txt"
     thefile.write_text(
-        "edh=\xF0\na-tilde-degrees=\xC3\xB0\n",
+        "edh=\xf0\na-tilde-degrees=\xc3\xb0\n",
         encoding="latin-1",
     )
     remove_lines_str_spy = mocker.spy(lineinfile, "remove_lines_from_string")
     assert remove_lines_from_file(
         thefile,
-        "\uDCF0",
+        "\udcf0",
         encoding="utf-8",
         errors="surrogateescape",
     )
     remove_lines_str_spy.assert_called_once_with(
-        "edh=\uDCF0\na-tilde-degrees=\xF0\n",
-        "\uDCF0",
+        "edh=\udcf0\na-tilde-degrees=\xf0\n",
+        "\udcf0",
     )
     assert listdir(tmp_path) == ["file.txt"]
-    assert thefile.read_text(encoding="latin-1") == "a-tilde-degrees=\xC3\xB0\n"
+    assert thefile.read_text(encoding="latin-1") == "a-tilde-degrees=\xc3\xb0\n"
 
 
 def test_remove_lines_from_file_encoding_errors_backup(
@@ -612,23 +612,23 @@ def test_remove_lines_from_file_encoding_errors_backup(
 ) -> None:
     thefile = tmp_path / "file.txt"
     thefile.write_text(
-        "edh=\xF0\na-tilde-degrees=\xC3\xB0\n",
+        "edh=\xf0\na-tilde-degrees=\xc3\xb0\n",
         encoding="latin-1",
     )
     remove_lines_str_spy = mocker.spy(lineinfile, "remove_lines_from_string")
     assert remove_lines_from_file(
         thefile,
-        "\xF0",
+        "\xf0",
         encoding="utf-8",
         errors="surrogateescape",
         backup=CHANGED,
     )
     remove_lines_str_spy.assert_called_once_with(
-        "edh=\uDCF0\na-tilde-degrees=\xF0\n",
-        "\xF0",
+        "edh=\udcf0\na-tilde-degrees=\xf0\n",
+        "\xf0",
     )
     assert listdir(tmp_path) == ["file.txt", "file.txt~"]
-    assert thefile.read_text(encoding="latin-1") == "edh=\xF0\n"
+    assert thefile.read_text(encoding="latin-1") == "edh=\xf0\n"
     assert thefile.with_name(thefile.name + "~").read_text(encoding="latin-1") == (
-        "edh=\xF0\na-tilde-degrees=\xC3\xB0\n"
+        "edh=\xf0\na-tilde-degrees=\xc3\xb0\n"
     )
