@@ -42,7 +42,7 @@ attributes; those must be set externally.
 
 Installation
 ============
-``lineinfile`` requires Python 3.8 or higher.  Just use `pip
+``lineinfile`` requires Python 3.10 or higher.  Just use `pip
 <https://pip.pypa.io>`_ for Python 3 (You have pip, right?) to install
 ``lineinfile`` and its dependencies::
 
