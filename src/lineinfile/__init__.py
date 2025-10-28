@@ -25,8 +25,9 @@ from enum import Enum
 import os
 from pathlib import Path
 import re
+from re import Pattern
 from shutil import copystat
-from typing import Any, Optional, Pattern, Union
+from typing import Any, TypeAlias
 
 __version__ = "0.5.0.dev1"
 __author__ = "John Thorvald Wodder II"
@@ -50,14 +51,12 @@ __all__ = [
     "remove_lines_from_string",
 ]
 
-Patternish = Union[str, Pattern[str]]
+Patternish: TypeAlias = str | Pattern[str]
 
 
 class Inserter(ABC):
     @abstractmethod
-    def update_state(
-        self, state: Optional[int], lineno: int, line: str
-    ) -> Optional[int]: ...
+    def update_state(self, state: int | None, lineno: int, line: str) -> int | None: ...
 
     def get_feeder(self) -> LineFeeder:
         return LineFeeder(self)
@@ -66,21 +65,19 @@ class Inserter(ABC):
 class LineFeeder:
     def __init__(self, inserter: Inserter):
         self.inserter = inserter
-        self.state: Optional[int] = None
+        self.state: int | None = None
 
     def feed(self, lineno: int, line: str) -> None:
         self.state = self.inserter.update_state(self.state, lineno, line)
 
-    def get_index(self) -> Optional[int]:
+    def get_index(self) -> int | None:
         return self.state
 
 
 class AtBOF(Inserter):
     """Inserter that always inserts at the beginning of the file"""
 
-    def update_state(
-        self, _state: Optional[int], _lineno: int, _line: str
-    ) -> Optional[int]:
+    def update_state(self, _state: int | None, _lineno: int, _line: str) -> int | None:
         return 0
 
     def __eq__(self, other: Any) -> bool:
@@ -93,9 +90,7 @@ class AtBOF(Inserter):
 class AtEOF(Inserter):
     """Inserter that always inserts at the end of the file"""
 
-    def update_state(
-        self, _state: Optional[int], _lineno: int, _line: str
-    ) -> Optional[int]:
+    def update_state(self, _state: int | None, _lineno: int, _line: str) -> int | None:
         return None
 
     def __eq__(self, other: Any) -> bool:
@@ -128,9 +123,7 @@ class AfterFirst(PatternInserter):
     the end of the file if no line matches
     """
 
-    def update_state(
-        self, state: Optional[int], lineno: int, line: str
-    ) -> Optional[int]:
+    def update_state(self, state: int | None, lineno: int, line: str) -> int | None:
         if state is None and self.pattern.search(line):
             return lineno + 1
         else:
@@ -144,9 +137,7 @@ class AfterLast(PatternInserter):
     the end of the file if no line matches
     """
 
-    def update_state(
-        self, state: Optional[int], lineno: int, line: str
-    ) -> Optional[int]:
+    def update_state(self, state: int | None, lineno: int, line: str) -> int | None:
         if self.pattern.search(line):
             return lineno + 1
         else:
@@ -160,9 +151,7 @@ class BeforeFirst(PatternInserter):
     the end of the file if no line matches
     """
 
-    def update_state(
-        self, state: Optional[int], lineno: int, line: str
-    ) -> Optional[int]:
+    def update_state(self, state: int | None, lineno: int, line: str) -> int | None:
         if state is None and self.pattern.search(line):
             return lineno
         else:
@@ -176,9 +165,7 @@ class BeforeLast(PatternInserter):
     the end of the file if no line matches
     """
 
-    def update_state(
-        self, state: Optional[int], lineno: int, line: str
-    ) -> Optional[int]:
+    def update_state(self, state: int | None, lineno: int, line: str) -> int | None:
         if self.pattern.search(line):
             return lineno
         else:
@@ -188,13 +175,13 @@ class BeforeLast(PatternInserter):
 class Matcher(ABC):
     def __init__(self, pattern: Patternish) -> None:
         self.pattern: re.Pattern[str] = re.compile(pattern)
-        self.i: Optional[int] = None
-        self.m: Optional[re.Match[str]] = None
+        self.i: int | None = None
+        self.m: re.Match[str] | None = None
 
     @abstractmethod
     def feed(self, i: int, line: str) -> None: ...
 
-    def get_index(self) -> Optional[int]:
+    def get_index(self) -> int | None:
         return self.i
 
     def expand(self, line: str) -> str:
@@ -224,26 +211,26 @@ class MatchLast(Matcher):
 class ExactMatchFirst:
     def __init__(self, line: str) -> None:
         self.line: str = chomp(line)
-        self.i: Optional[int] = None
+        self.i: int | None = None
 
     def feed(self, i: int, line: str) -> None:
         if self.i is None and self.line == chomp(line):
             self.i = i
 
-    def get_index(self) -> Optional[int]:
+    def get_index(self) -> int | None:
         return self.i
 
 
 class ExactMatchLast:
     def __init__(self, line: str) -> None:
         self.line: str = chomp(line)
-        self.i: Optional[int] = None
+        self.i: int | None = None
 
     def feed(self, i: int, line: str) -> None:
         if self.line == chomp(line):
             self.i = i
 
-    def get_index(self) -> Optional[int]:
+    def get_index(self) -> int | None:
         return self.i
 
 
@@ -259,8 +246,8 @@ ALWAYS = BackupWhen.ALWAYS
 def add_line_to_string(
     s: str,
     line: str,
-    regexp: Optional[Patternish] = None,
-    inserter: Optional[Inserter] = None,
+    regexp: Patternish | None = None,
+    inserter: Inserter | None = None,
     match_first: bool = False,
     backrefs: bool = False,
 ) -> str:
@@ -287,7 +274,7 @@ def add_line_to_string(
         line_matcher = ExactMatchFirst(line)
     else:
         line_matcher = ExactMatchLast(line)
-    rgx: Optional[Matcher]
+    rgx: Matcher | None
     if regexp is None:
         rgx = None
         if backrefs:
@@ -330,15 +317,15 @@ def add_line_to_string(
 def add_line_to_file(
     filepath: str | bytes | os.PathLike[str] | os.PathLike[bytes],
     line: str,
-    regexp: Optional[Patternish] = None,
-    inserter: Optional[Inserter] = None,
+    regexp: Patternish | None = None,
+    inserter: Inserter | None = None,
     match_first: bool = False,
     backrefs: bool = False,
-    backup: Optional[BackupWhen] = None,
-    backup_ext: Optional[str] = None,
+    backup: BackupWhen | None = None,
+    backup_ext: str | None = None,
     create: bool = False,
-    encoding: Optional[str] = None,
-    errors: Optional[str] = None,
+    encoding: str | None = None,
+    errors: str | None = None,
 ) -> bool:
     """
     Add the given ``line`` to the file at ``filepath`` if it is not already
@@ -418,10 +405,10 @@ def remove_lines_from_string(s: str, regexp: Patternish) -> str:
 def remove_lines_from_file(
     filepath: str | bytes | os.PathLike[str] | os.PathLike[bytes],
     regexp: Patternish,
-    backup: Optional[BackupWhen] = None,
-    backup_ext: Optional[str] = None,
-    encoding: Optional[str] = None,
-    errors: Optional[str] = None,
+    backup: BackupWhen | None = None,
+    backup_ext: str | None = None,
+    encoding: str | None = None,
+    errors: str | None = None,
 ) -> bool:
     """
     Delete all lines from the file at ``filepath`` that match the regular

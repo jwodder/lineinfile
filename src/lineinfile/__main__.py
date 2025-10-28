@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Any, Optional, TextIO
+from typing import TYPE_CHECKING, Any, TextIO
 import click
 from . import (
     ALWAYS,
@@ -158,17 +158,17 @@ def main() -> None:
 @click.argument("line", required=False)
 @click.argument("file", required=False)
 def add(
-    line: Optional[str],
-    file: Optional[str],
-    line_opt: Optional[str],
-    regexp: Optional[str],
+    line: str | None,
+    file: str | None,
+    line_opt: str | None,
+    regexp: str | None,
     backrefs: bool,
-    backup: Optional[BackupWhen],
-    backup_ext: Optional[str],
+    backup: BackupWhen | None,
+    backup_ext: str | None,
     create: bool,
     match_first: bool,
-    inserter: Optional[Inserter] = None,
-    outfile: Optional[TextIO] = None,
+    inserter: Inserter | None = None,
+    outfile: TextIO | None = None,
 ) -> None:
     """
     Add LINE to FILE if it's not already present.
@@ -288,12 +288,12 @@ def add(
 @click.argument("regexp", required=False)
 @click.argument("file", required=False)
 def remove(
-    regexp: Optional[str],
-    file: Optional[str],
-    regexp_opt: Optional[str],
-    backup: Optional[BackupWhen],
-    backup_ext: Optional[str],
-    outfile: Optional[TextIO] = None,
+    regexp: str | None,
+    file: str | None,
+    regexp_opt: str | None,
+    backup: BackupWhen | None,
+    backup_ext: str | None,
+    outfile: TextIO | None = None,
 ) -> None:
     """
     Delete all lines from FILE that match REGEXP.
