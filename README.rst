@@ -295,17 +295,17 @@ regular expression to start matching at the beginning of a line, prefix it with
 .. code:: python
 
     lineinfile.add_line_to_file(
-        filepath: Union[str, bytes, os.PathLike[str], os.PathLike[bytes]],
+        filepath: str | bytes | os.PathLike[str] | os.PathLike[bytes],
         line: str,
-        regexp: Optional[Union[str, re.Pattern[str]]] = None,
-        inserter: Optional[Inserter] = None,
+        regexp: str | re.Pattern[str] | None = None,
+        inserter: Inserter | None = None,
         match_first: bool = False,
         backrefs: bool = False,
-        backup: Optional[BackupWhen] = None,
-        backup_ext: Optional[str] = None,
+        backup: BackupWhen | None = None,
+        backup_ext: str | None = None,
         create: bool = False,
-        encoding: Optional[str] = None,
-        errors: Optional[str] = None,
+        encoding: str | None = None,
+        errors: str | None = None,
     ) -> bool
 
 Add the given ``line`` to the file at ``filepath`` if it is not already
@@ -341,12 +341,12 @@ didn't match), the file will not be created.
 .. code:: python
 
     lineinfile.remove_lines_from_file(
-        filepath: Union[str, bytes, os.PathLike[str], os.PathLike[bytes]],
-        regexp: Union[str, re.Pattern[str]],
-        backup: Optional[BackupWhen] = None,
-        backup_ext: Optional[str] = None,
-        encoding: Optional[str] = None,
-        errors: Optional[str] = None,
+        filepath: str | bytes | os.PathLike[str] | os.PathLike[bytes],
+        regexp: str | re.Pattern[str]],
+        backup: BackupWhen | None = None,
+        backup_ext: str | None = None,
+        encoding: str | None = None,
+        errors: str | None = None,
     ) -> bool
 
 Delete all lines from the file at ``filepath`` that match the regular
@@ -365,8 +365,8 @@ original, with the value of ``backup_ext`` (default: ``~``) appended.
     lineinfile.add_line_to_string(
         s: str,
         line: str,
-        regexp: Optional[Union[str, re.Pattern[str]]] = None,
-        inserter: Optional[Inserter] = None,
+        regexp: str | re.Pattern[str] | None = None,
+        inserter: Inserter | None = None,
         match_first: bool = False,
         backrefs: bool = False,
     ) -> str
@@ -391,10 +391,7 @@ setting ``regexp``.
 
 .. code:: python
 
-    lineinfile.remove_lines_from_string(
-        s: str,
-        regexp: Union[str, re.Pattern[str]],
-    ) -> str
+    lineinfile.remove_lines_from_string(s: str, regexp: str | re.Pattern[str]) -> str
 
 Delete all lines from the string ``s`` that match the regular expression
 ``regexp`` (either a string or a compiled pattern object) and return the
