@@ -1,3 +1,7 @@
+v0.6.0 (in development)
+-----------------------
+- Adjust formatting of subcommand descriptions in `--help` output
+
 v0.5.0 (2025-12-15)
 -------------------
 - Support Python 3.14

@@ -66,6 +66,7 @@ class Command:
                 "specify any of the `--backup-changed`, `--backup-always`, `--backup-ext`,\n"
                 "or `--create` options when no file is given.\n"
             ),
+            formatter_class=argparse.RawDescriptionHelpFormatter,
         )
 
         addparser.add_argument(
@@ -188,6 +189,7 @@ class Command:
                 "specify any of the `--backup-changed`, `--backup-always`, or `--backup-ext`\n"
                 "options when no file is given.\n"
             ),
+            formatter_class=argparse.RawDescriptionHelpFormatter,
         )
 
         removeparser.add_argument(
