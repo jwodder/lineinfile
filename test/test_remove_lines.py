@@ -4,10 +4,7 @@ from dataclasses import dataclass
 from operator import attrgetter
 import os
 from pathlib import Path
-from traceback import format_exception
 from typing import Any
-import click
-from click.testing import CliRunner, Result
 import pytest
 from pytest_mock import MockerFixture
 import lineinfile
@@ -60,14 +57,6 @@ def remove_lines_cases() -> Iterator[RemoveLinesCase]:
 
 def listdir(dirpath: Path) -> list[str]:
     return sorted(p.name for p in dirpath.iterdir())
-
-
-def show_result(r: Result) -> str:
-    if r.exception is not None:
-        assert isinstance(r.exc_info, tuple)
-        return "".join(format_exception(*r.exc_info))
-    else:
-        return r.output
 
 
 REMOVE_LINES_CASES = list(remove_lines_cases())
@@ -249,67 +238,70 @@ CLI_DEFAULTS = {
     ],
 )
 def test_cli_remove(
-    opts: list[str], args: dict[str, Any], mocker: MockerFixture
+    capsys: pytest.CaptureFixture[str],
+    opts: list[str],
+    args: dict[str, Any],
+    mocker: MockerFixture,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
 ) -> None:
-    runner = CliRunner()
-    with runner.isolated_filesystem():
-        Path("file.txt").touch()
-        remove_lines_mock = mocker.patch(
-            "lineinfile.__main__.remove_lines_from_file",
-            return_value=True,
-        )
-        r = runner.invoke(
-            main,
-            ["remove"] + opts + ["^foo=", "file.txt"],
-            standalone_mode=False,
-        )
-    assert r.exit_code == 0, show_result(r)
-    assert r.output == ""
+    monkeypatch.chdir(tmp_path)
+    Path("file.txt").touch()
+    remove_lines_mock = mocker.patch(
+        "lineinfile.__main__.remove_lines_from_file",
+        return_value=True,
+    )
+    assert main(["remove"] + opts + ["^foo=", "file.txt"]) == 0
+    out, err = capsys.readouterr()
+    assert out == ""
+    assert err == ""
     fargs = {**CLI_DEFAULTS, **args}
     remove_lines_mock.assert_called_once_with("file.txt", "^foo=", **fargs)
 
 
-def test_cli_remove_empty_backup_ext(mocker: MockerFixture) -> None:
-    runner = CliRunner()
-    with runner.isolated_filesystem():
-        Path("file.txt").touch()
-        remove_lines_mock = mocker.patch(
-            "lineinfile.__main__.remove_lines_from_file",
-            return_value=True,
-        )
-        r = runner.invoke(
-            main,
-            ["remove", "--backup-ext=", "^foo=", "file.txt"],
-            standalone_mode=False,
-        )
-    assert r.exit_code != 0
-    assert isinstance(r.exception, click.UsageError)
-    assert str(r.exception) == "--backup-ext cannot be empty"
+def test_cli_remove_empty_backup_ext(
+    capsys: pytest.CaptureFixture[str],
+    mocker: MockerFixture,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    Path("file.txt").touch()
+    remove_lines_mock = mocker.patch(
+        "lineinfile.__main__.remove_lines_from_file",
+        return_value=True,
+    )
+    assert main(["remove", "--backup-ext=", "^foo=", "file.txt"]) == 1
+    out, err = capsys.readouterr()
+    assert out == ""
+    assert err == "lineinfile: --backup-ext cannot be empty\n"
     remove_lines_mock.assert_not_called()
 
 
 @pytest.mark.parametrize("input_args", [[], ["-"]])
-def test_cli_remove_stdin(input_args: list[str], mocker: MockerFixture) -> None:
-    runner = CliRunner()
+def test_cli_remove_stdin(
+    capsys: pytest.CaptureFixture[str],
+    input_args: list[str],
+    mocker: MockerFixture,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    mocker.patch("sys.stdin", **{"read.return_value": INPUT})  # type: ignore[call-overload]
+    monkeypatch.chdir(tmp_path)
     output = remove_lines_from_string(INPUT, "^foo=")
-    with runner.isolated_filesystem():
-        Path("-").touch()
-        remove_lines_file_mock = mocker.patch(
-            "lineinfile.__main__.remove_lines_from_file",
-            return_value=True,
-        )
-        remove_lines_str_mock = mocker.patch(
-            "lineinfile.__main__.remove_lines_from_string",
-            return_value=output,
-        )
-        r = runner.invoke(
-            main,
-            ["remove", "^foo="] + input_args,
-            input=INPUT,
-            standalone_mode=False,
-        )
-    assert r.exit_code == 0, show_result(r)
-    assert r.output == output
+    Path("-").touch()
+    remove_lines_file_mock = mocker.patch(
+        "lineinfile.__main__.remove_lines_from_file",
+        return_value=True,
+    )
+    remove_lines_str_mock = mocker.patch(
+        "lineinfile.__main__.remove_lines_from_string",
+        return_value=output,
+    )
+    assert main(["remove", "^foo="] + input_args) == 0
+    out, err = capsys.readouterr()
+    assert out == output
+    assert err == ""
     remove_lines_file_mock.assert_not_called()
     remove_lines_str_mock.assert_called_once_with(INPUT, "^foo=")
 
@@ -325,109 +317,115 @@ def test_cli_remove_stdin(input_args: list[str], mocker: MockerFixture) -> None:
     ],
 )
 def test_cli_remove_stdin_bad_file_args(
-    file_arg: str, err_arg: str, input_args: list[str], mocker: MockerFixture
+    capsys: pytest.CaptureFixture[str],
+    file_arg: str,
+    err_arg: str,
+    input_args: list[str],
+    mocker: MockerFixture,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
 ) -> None:
-    runner = CliRunner()
-    with runner.isolated_filesystem():
-        Path("file.txt").touch()
-        remove_lines_file_mock = mocker.patch(
-            "lineinfile.__main__.remove_lines_from_file",
-        )
-        remove_lines_str_mock = mocker.patch(
-            "lineinfile.__main__.remove_lines_from_string",
-        )
-        r = runner.invoke(
-            main,
-            ["remove", file_arg, "^gnusto="] + input_args,
-            input="This is test text.\n",
-            standalone_mode=False,
-        )
-    assert r.exit_code != 0
-    assert isinstance(r.exception, click.UsageError)
-    assert str(r.exception) == (
-        f"{err_arg} cannot be set when reading from standard input."
+    mocker.patch("sys.stdin", **{"read.return_value": "This is test text.\n"})  # type: ignore[call-overload]
+    monkeypatch.chdir(tmp_path)
+    Path("file.txt").touch()
+    remove_lines_file_mock = mocker.patch(
+        "lineinfile.__main__.remove_lines_from_file",
+    )
+    remove_lines_str_mock = mocker.patch(
+        "lineinfile.__main__.remove_lines_from_string",
+    )
+    assert main(["remove", file_arg, "^gnusto="] + input_args) == 1
+    out, err = capsys.readouterr()
+    assert out == ""
+    assert (
+        err
+        == f"lineinfile: {err_arg} cannot be set when reading from standard input.\n"
     )
     remove_lines_file_mock.assert_not_called()
     remove_lines_str_mock.assert_not_called()
 
 
-def test_cli_remove_outfile(mocker: MockerFixture) -> None:
-    runner = CliRunner()
+def test_cli_remove_outfile(
+    capsys: pytest.CaptureFixture[str],
+    mocker: MockerFixture,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
     output = remove_lines_from_string(INPUT, "^foo=")
-    with runner.isolated_filesystem():
-        thefile = Path("file.txt")
-        thefile.write_text(INPUT)
-        remove_lines_file_mock = mocker.patch(
-            "lineinfile.__main__.remove_lines_from_file",
-        )
-        remove_lines_str_mock = mocker.patch(
-            "lineinfile.__main__.remove_lines_from_string",
-            return_value=output,
-        )
-        r = runner.invoke(
-            main,
-            ["remove", "--outfile=out.txt", "^foo=", "file.txt"],
-            standalone_mode=False,
-        )
-        assert r.exit_code == 0, show_result(r)
-        assert r.output == ""
-        assert sorted(os.listdir()) == ["file.txt", "out.txt"]
-        assert thefile.read_text() == INPUT
-        assert Path("out.txt").read_text() == output
+    monkeypatch.chdir(tmp_path)
+    thefile = Path("file.txt")
+    thefile.write_text(INPUT)
+    remove_lines_file_mock = mocker.patch(
+        "lineinfile.__main__.remove_lines_from_file",
+    )
+    remove_lines_str_mock = mocker.patch(
+        "lineinfile.__main__.remove_lines_from_string",
+        return_value=output,
+    )
+    assert main(["remove", "--outfile=out.txt", "^foo=", "file.txt"]) == 0
+    out, err = capsys.readouterr()
+    assert out == ""
+    assert err == ""
+    assert sorted(os.listdir()) == ["file.txt", "out.txt"]
+    assert thefile.read_text() == INPUT
+    assert Path("out.txt").read_text() == output
     remove_lines_file_mock.assert_not_called()
     remove_lines_str_mock.assert_called_once_with(INPUT, "^foo=")
 
 
 @pytest.mark.parametrize("input_args", [[], ["-"]])
-def test_cli_remove_stdin_outfile(input_args: list[str], mocker: MockerFixture) -> None:
-    runner = CliRunner()
+def test_cli_remove_stdin_outfile(
+    capsys: pytest.CaptureFixture[str],
+    input_args: list[str],
+    mocker: MockerFixture,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
     output = remove_lines_from_string(INPUT, "^foo=")
-    with runner.isolated_filesystem():
-        Path("-").touch()
-        remove_lines_file_mock = mocker.patch(
-            "lineinfile.__main__.remove_lines_from_file",
-        )
-        remove_lines_str_mock = mocker.patch(
-            "lineinfile.__main__.remove_lines_from_string",
-            return_value=output,
-        )
-        r = runner.invoke(
-            main,
-            ["remove", "-oout.txt", "^foo="] + input_args,
-            input=INPUT,
-            standalone_mode=False,
-        )
-        assert r.exit_code == 0, show_result(r)
-        assert r.output == ""
-        assert sorted(os.listdir()) == ["-", "out.txt"]
-        assert Path("-").read_text() == ""
-        assert Path("out.txt").read_text() == output
+    mocker.patch("sys.stdin", **{"read.return_value": INPUT})  # type: ignore[call-overload]
+    monkeypatch.chdir(tmp_path)
+    Path("-").touch()
+    remove_lines_file_mock = mocker.patch(
+        "lineinfile.__main__.remove_lines_from_file",
+    )
+    remove_lines_str_mock = mocker.patch(
+        "lineinfile.__main__.remove_lines_from_string",
+        return_value=output,
+    )
+    assert main(["remove", "-oout.txt", "^foo="] + input_args) == 0
+    out, err = capsys.readouterr()
+    assert out == ""
+    assert err == ""
+    assert sorted(os.listdir()) == ["-", "out.txt"]
+    assert Path("-").read_text() == ""
+    assert Path("out.txt").read_text() == output
     remove_lines_file_mock.assert_not_called()
     remove_lines_str_mock.assert_called_once_with(INPUT, "^foo=")
 
 
-def test_cli_remove_outfile_stdout(mocker: MockerFixture) -> None:
-    runner = CliRunner()
+def test_cli_remove_outfile_stdout(
+    capsys: pytest.CaptureFixture[str],
+    mocker: MockerFixture,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
     output = remove_lines_from_string(INPUT, "^foo=")
-    with runner.isolated_filesystem():
-        thefile = Path("file.txt")
-        thefile.write_text(INPUT)
-        remove_lines_file_mock = mocker.patch(
-            "lineinfile.__main__.remove_lines_from_file",
-        )
-        remove_lines_str_mock = mocker.patch(
-            "lineinfile.__main__.remove_lines_from_string",
-            return_value=output,
-        )
-        r = runner.invoke(
-            main,
-            ["remove", "--outfile", "-", "^foo=", "file.txt"],
-            standalone_mode=False,
-        )
-        assert r.exit_code == 0, show_result(r)
-        assert r.output == output
-        assert os.listdir() == ["file.txt"]
-        assert thefile.read_text() == INPUT
+    monkeypatch.chdir(tmp_path)
+    thefile = Path("file.txt")
+    thefile.write_text(INPUT)
+    remove_lines_file_mock = mocker.patch(
+        "lineinfile.__main__.remove_lines_from_file",
+    )
+    remove_lines_str_mock = mocker.patch(
+        "lineinfile.__main__.remove_lines_from_string",
+        return_value=output,
+    )
+    assert main(["remove", "--outfile", "-", "^foo=", "file.txt"]) == 0
+    out, err = capsys.readouterr()
+    assert out == output
+    assert err == ""
+    assert os.listdir() == ["file.txt"]
+    assert thefile.read_text() == INPUT
     remove_lines_file_mock.assert_not_called()
     remove_lines_str_mock.assert_called_once_with(INPUT, "^foo=")
 
@@ -442,133 +440,141 @@ def test_cli_remove_outfile_stdout(mocker: MockerFixture) -> None:
     ],
 )
 def test_cli_remove_outfile_bad_file_args(
-    file_arg: str, err_arg: str, mocker: MockerFixture
+    capsys: pytest.CaptureFixture[str],
+    file_arg: str,
+    err_arg: str,
+    mocker: MockerFixture,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
 ) -> None:
-    runner = CliRunner()
-    with runner.isolated_filesystem():
-        Path("file.txt").touch()
-        remove_lines_file_mock = mocker.patch(
-            "lineinfile.__main__.remove_lines_from_file",
-        )
-        remove_lines_str_mock = mocker.patch(
-            "lineinfile.__main__.remove_lines_from_string",
-        )
-        r = runner.invoke(
-            main,
-            ["remove", "-o", "out.txt", file_arg, "^foo=", "file.txt"],
-            standalone_mode=False,
-        )
-    assert r.exit_code != 0
-    assert isinstance(r.exception, click.UsageError)
-    assert str(r.exception) == f"{err_arg} is incompatible with --outfile."
+    monkeypatch.chdir(tmp_path)
+    Path("file.txt").touch()
+    remove_lines_file_mock = mocker.patch(
+        "lineinfile.__main__.remove_lines_from_file",
+    )
+    remove_lines_str_mock = mocker.patch(
+        "lineinfile.__main__.remove_lines_from_string",
+    )
+    assert main(["remove", "-o", "out.txt", file_arg, "^foo=", "file.txt"]) == 1
+    out, err = capsys.readouterr()
+    assert out == ""
+    assert err == f"lineinfile: {err_arg} is incompatible with --outfile.\n"
     remove_lines_file_mock.assert_not_called()
     remove_lines_str_mock.assert_not_called()
 
 
-def test_cli_remove_outfile_is_infile(mocker: MockerFixture) -> None:
-    runner = CliRunner()
+def test_cli_remove_outfile_is_infile(
+    capsys: pytest.CaptureFixture[str],
+    mocker: MockerFixture,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
     output = remove_lines_from_string(INPUT, "^foo=")
-    with runner.isolated_filesystem():
-        thefile = Path("file.txt")
-        thefile.write_text(INPUT)
-        remove_lines_file_mock = mocker.patch(
-            "lineinfile.__main__.remove_lines_from_file",
-        )
-        remove_lines_str_mock = mocker.patch(
-            "lineinfile.__main__.remove_lines_from_string",
-            return_value=output,
-        )
-        r = runner.invoke(
-            main,
-            ["remove", "--outfile=file.txt", "^foo=", "file.txt"],
-            standalone_mode=False,
-        )
-        assert r.exit_code == 0, show_result(r)
-        assert r.output == ""
-        assert os.listdir() == ["file.txt"]
-        assert thefile.read_text() == output
+    monkeypatch.chdir(tmp_path)
+    thefile = Path("file.txt")
+    thefile.write_text(INPUT)
+    remove_lines_file_mock = mocker.patch(
+        "lineinfile.__main__.remove_lines_from_file",
+    )
+    remove_lines_str_mock = mocker.patch(
+        "lineinfile.__main__.remove_lines_from_string",
+        return_value=output,
+    )
+    assert main(["remove", "--outfile=file.txt", "^foo=", "file.txt"]) == 0
+    out, err = capsys.readouterr()
+    assert out == ""
+    assert err == ""
+    assert os.listdir() == ["file.txt"]
+    assert thefile.read_text() == output
     remove_lines_file_mock.assert_not_called()
     remove_lines_str_mock.assert_called_once_with(INPUT, "^foo=")
 
 
 @pytest.mark.parametrize("regexp", ["^foo=", "-Lfoo=", "--foo=bar"])
-def test_cli_remove_regexp_opt_file(regexp: str, mocker: MockerFixture) -> None:
-    runner = CliRunner()
-    with runner.isolated_filesystem():
-        Path("file.txt").touch()
-        remove_lines_mock = mocker.patch(
-            "lineinfile.__main__.remove_lines_from_file",
-            return_value=True,
-        )
-        r = runner.invoke(
-            main,
-            ["remove", "-e", regexp, "file.txt"],
-            standalone_mode=False,
-        )
-    assert r.exit_code == 0, show_result(r)
-    assert r.output == ""
+def test_cli_remove_regexp_opt_file(
+    capsys: pytest.CaptureFixture[str],
+    regexp: str,
+    mocker: MockerFixture,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    Path("file.txt").touch()
+    remove_lines_mock = mocker.patch(
+        "lineinfile.__main__.remove_lines_from_file",
+        return_value=True,
+    )
+    assert main(["remove", f"--regexp={regexp}", "file.txt"]) == 0
+    out, err = capsys.readouterr()
+    assert out == ""
+    assert err == ""
     remove_lines_mock.assert_called_once_with("file.txt", regexp, **CLI_DEFAULTS)
 
 
 @pytest.mark.parametrize("regexp", ["^foo=", "-Lfoo=", "--foo=bar"])
 @pytest.mark.parametrize("input_args", [[], ["-"]])
 def test_cli_remove_regexp_opt_stdin(
-    input_args: list[str], regexp: str, mocker: MockerFixture
+    capsys: pytest.CaptureFixture[str],
+    input_args: list[str],
+    regexp: str,
+    mocker: MockerFixture,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
 ) -> None:
-    runner = CliRunner()
     output = remove_lines_from_string(INPUT, regexp)
-    with runner.isolated_filesystem():
-        Path("file.txt").touch()
-        remove_lines_file_mock = mocker.patch(
-            "lineinfile.__main__.remove_lines_from_file",
-            return_value=INPUT != output,
-        )
-        remove_lines_str_mock = mocker.patch(
-            "lineinfile.__main__.remove_lines_from_string",
-            return_value=output,
-        )
-        r = runner.invoke(
-            main,
-            ["remove", "-e", regexp] + input_args,
-            input=INPUT,
-            standalone_mode=False,
-        )
-    assert r.exit_code == 0, show_result(r)
-    assert r.output == output
+    mocker.patch("sys.stdin", **{"read.return_value": INPUT})  # type: ignore[call-overload]
+    monkeypatch.chdir(tmp_path)
+    Path("file.txt").touch()
+    remove_lines_file_mock = mocker.patch(
+        "lineinfile.__main__.remove_lines_from_file",
+        return_value=INPUT != output,
+    )
+    remove_lines_str_mock = mocker.patch(
+        "lineinfile.__main__.remove_lines_from_string",
+        return_value=output,
+    )
+    assert main(["remove", f"--regexp={regexp}"] + input_args) == 0
+    out, err = capsys.readouterr()
+    assert out == output
+    assert err == ""
     remove_lines_file_mock.assert_not_called()
     remove_lines_str_mock.assert_called_once_with(INPUT, regexp)
 
 
-def test_cli_remove_regexp_opt_two_args(mocker: MockerFixture) -> None:
-    runner = CliRunner()
-    with runner.isolated_filesystem():
-        Path("file.txt").touch()
-        remove_lines_mock = mocker.patch(
-            "lineinfile.__main__.remove_lines_from_file",
-            return_value=True,
-        )
-        r = runner.invoke(
-            main,
-            ["remove", "--regexp", "^gnusto=", "bar$", "file.txt"],
-            standalone_mode=False,
-        )
-    assert r.exit_code != 0
-    assert isinstance(r.exception, click.UsageError)
-    assert str(r.exception) == "-e/--regexp given with too many positional arguments"
+def test_cli_remove_regexp_opt_two_args(
+    capsys: pytest.CaptureFixture[str],
+    mocker: MockerFixture,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    Path("file.txt").touch()
+    remove_lines_mock = mocker.patch(
+        "lineinfile.__main__.remove_lines_from_file",
+        return_value=True,
+    )
+    assert main(["remove", "--regexp", "^gnusto=", "bar$", "file.txt"]) == 1
+    out, err = capsys.readouterr()
+    assert out == ""
+    assert err == "lineinfile: -e/--regexp given with too many positional arguments\n"
     remove_lines_mock.assert_not_called()
 
 
-def test_cli_remove_no_regexp_opt_no_args(mocker: MockerFixture) -> None:
-    runner = CliRunner()
-    with runner.isolated_filesystem():
-        remove_lines_mock = mocker.patch(
-            "lineinfile.__main__.remove_lines_from_file",
-            return_value=True,
-        )
-        r = runner.invoke(main, ["remove"], standalone_mode=False)
-    assert r.exit_code != 0
-    assert isinstance(r.exception, click.UsageError)
-    assert str(r.exception) == "No REGEXP given"
+def test_cli_remove_no_regexp_opt_no_args(
+    capsys: pytest.CaptureFixture[str],
+    mocker: MockerFixture,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    remove_lines_mock = mocker.patch(
+        "lineinfile.__main__.remove_lines_from_file",
+        return_value=True,
+    )
+    assert main(["remove"]) == 1
+    out, err = capsys.readouterr()
+    assert out == ""
+    assert err == "lineinfile: No REGEXP given\n"
     remove_lines_mock.assert_not_called()
 
 

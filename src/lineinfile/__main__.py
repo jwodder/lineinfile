@@ -1,6 +1,9 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Any, TextIO
-import click
+import argparse
+from dataclasses import dataclass
+from pathlib import Path
+import sys
+from typing import Protocol
 from . import (
     ALWAYS,
     CHANGED,
@@ -11,6 +14,7 @@ from . import (
     BackupWhen,
     BeforeFirst,
     BeforeLast,
+    Inserter,
     __version__,
     add_line_to_file,
     add_line_to_string,
@@ -19,335 +23,388 @@ from . import (
     unescape,
 )
 
-if TYPE_CHECKING:
-    from . import Inserter
+
+class Subcommand(Protocol):
+    def run(self) -> int: ...
 
 
-def set_inserter(ctx: click.Context, _param: click.Parameter, value: Any) -> Any:
-    if value is not None:
-        ctx.params["inserter"] = value
-    return value
+@dataclass
+class Command:
+    subcommand: Subcommand
 
-
-@click.group(context_settings={"help_option_names": ["-h", "--help"]})
-@click.version_option(
-    __version__,
-    "-V",
-    "--version",
-    message="lineinfile %(version)s",
-)
-def main() -> None:
-    """
-    Add & remove lines in files by regex.
-
-    Visit <https://github.com/jwodder/lineinfile> for more information.
-    """
-    pass
-
-
-@main.command()
-@click.option(
-    "-a",
-    "--after-first",
-    metavar="REGEX",
-    type=AfterFirst,
-    callback=set_inserter,
-    expose_value=False,
-    help="Insert LINE after the first line matching REGEX",
-)
-@click.option(
-    "-A",
-    "--after-last",
-    metavar="REGEX",
-    type=AfterLast,
-    callback=set_inserter,
-    expose_value=False,
-    help="Insert LINE after the last line matching REGEX",
-)
-@click.option(
-    "-b",
-    "--before-first",
-    metavar="REGEX",
-    type=BeforeFirst,
-    callback=set_inserter,
-    expose_value=False,
-    help="Insert LINE before the first line matching REGEX",
-)
-@click.option(
-    "-B",
-    "--before-last",
-    metavar="REGEX",
-    type=BeforeLast,
-    callback=set_inserter,
-    expose_value=False,
-    help="Insert LINE before the last line matching REGEX",
-)
-@click.option(
-    "--bof",
-    flag_value=AtBOF(),
-    type=click.UNPROCESSED,
-    callback=set_inserter,
-    expose_value=False,
-    help="Insert LINE at the beginning of the file",
-)
-@click.option(
-    "--eof",
-    flag_value=AtEOF(),
-    type=click.UNPROCESSED,
-    callback=set_inserter,
-    expose_value=False,
-    help="Insert LINE at the end of the file [default]",
-)
-@click.option(
-    "-e",
-    "--regexp",
-    metavar="REGEX",
-    help="Replace the last line matching REGEX with LINE",
-)
-@click.option(
-    "--backrefs",
-    is_flag=True,
-    help="Use `--regexp` match to expand capturing groups in LINE",
-)
-@click.option(
-    "--backup",
-    "--backup-changed",
-    "backup",
-    flag_value=CHANGED,
-    type=click.UNPROCESSED,
-    help="Backup file if modified",
-)
-@click.option(
-    "--backup-always",
-    "backup",
-    flag_value=ALWAYS,
-    type=click.UNPROCESSED,
-    help="Backup file whether modified or not",
-)
-@click.option(
-    "-i",
-    "--backup-ext",
-    metavar="EXT",
-    help="Extension for backup file [default: ~]",
-)
-@click.option(
-    "-c",
-    "--create",
-    is_flag=True,
-    help="Treat nonexistent FILE as empty",
-)
-@click.option(
-    "-L",
-    "--line",
-    "line_opt",
-    metavar="LINE",
-    help="Use LINE as the line to insert",
-)
-@click.option(
-    "-m/-M",
-    "--match-first/--match-last",
-    default=False,
-    help="`--regexp` replaces first/last matching line in input [default: last]",
-)
-@click.option(
-    "-o",
-    "--outfile",
-    type=click.File("w"),
-    help="Write output to given file",
-)
-@click.argument("line", required=False)
-@click.argument("file", required=False)
-def add(
-    line: str | None,
-    file: str | None,
-    line_opt: str | None,
-    regexp: str | None,
-    backrefs: bool,
-    backup: BackupWhen | None,
-    backup_ext: str | None,
-    create: bool,
-    match_first: bool,
-    inserter: Inserter | None = None,
-    outfile: TextIO | None = None,
-) -> None:
-    """
-    Add LINE to FILE if it's not already present.
-
-    If a Python regular expression is given with the `-e`/`--regexp`
-    option and it matches any lines in the file, LINE will replace the last
-    matching line (or the first matching line, if `--match-first` is given).
-    If the regular expression does not match any lines (or no regular
-    expression is specified) and LINE is not found in the file, the line is
-    inserted at the end of the file by default; this can be changed with the
-    `--after-first`, `--after-last`, `--before-first`, `--before-last`,
-    and `--bof` options.
-
-    If no file name is given on the command line, input is read from standard
-    input, and the result is written to standard output.  It is an error to
-    specify any of the `--backup-changed`, `--backup-always`, `--backup-ext`,
-    or `--create` options when no file is given.
-    """
-    if backup_ext is not None and backup is None:
-        backup = CHANGED
-    if backrefs and regexp is None:
-        raise click.UsageError("--backrefs cannot be specified without --regexp")
-    if backup_ext == "":
-        raise click.UsageError("--backup-ext cannot be empty")
-    if line_opt is None:
-        if line is None:
-            raise click.UsageError("No LINE given")
-        else:
-            theline = line
-        thefile = "-" if file is None else file
-    else:
-        theline = line_opt
-        thefile = "-" if line is None else line
-        if file is not None:
-            raise click.UsageError("-L/--line given with too many positional arguments")
-    if not backrefs:
-        theline = unescape(theline)
-    if thefile == "-" or outfile is not None:
-        if thefile == "-":
-            errmsg = "{option} cannot be set when reading from standard input."
-        else:
-            errmsg = "{option} is incompatible with --outfile."
-        if backup_ext is not None:
-            raise click.UsageError(errmsg.format(option="--backup-ext"))
-        if backup is CHANGED:
-            raise click.UsageError(errmsg.format(option="--backup-changed"))
-        if backup is ALWAYS:
-            raise click.UsageError(errmsg.format(option="--backup-always"))
-        if create:
-            raise click.UsageError(errmsg.format(option="--create"))
-        with click.open_file(thefile, encoding="utf-8") as fp:
-            before = fp.read()
-        after = add_line_to_string(
-            before,
-            theline,
-            regexp=regexp,
-            inserter=inserter,
-            match_first=match_first,
-            backrefs=backrefs,
+    @classmethod
+    def from_args(cls, argv: list[str] | None = None) -> Command:
+        parser = argparse.ArgumentParser(
+            description=(
+                "Add & remove lines in files by regex\n"
+                "\n"
+                "Visit <https://github.com/jwodder/lineinfile> for more information.\n"
+            ),
+            formatter_class=argparse.RawDescriptionHelpFormatter,
         )
-        if outfile is None:
-            outfp = click.get_text_stream("stdout")
-        else:
-            outfp = outfile
-        # Don't use click.echo(), as it modifies ANSI sequences on Windows
-        print(after, end="", file=outfp)
-    else:
-        add_line_to_file(
-            thefile,
-            theline,
-            regexp=regexp,
-            inserter=inserter,
-            match_first=match_first,
-            backrefs=backrefs,
-            backup=backup,
-            backup_ext=backup_ext,
-            create=create,
-            encoding="utf-8",
+        parser.add_argument(
+            "-V", "--version", action="version", version=f"%(prog)s {__version__}"
         )
 
+        subparsers = parser.add_subparsers(title="subcommands", dest="subcommand")
 
-@main.command()
-@click.option(
-    "--backup",
-    "--backup-changed",
-    "backup",
-    flag_value=CHANGED,
-    type=click.UNPROCESSED,
-    help="Backup file if modified",
-)
-@click.option(
-    "--backup-always",
-    "backup",
-    flag_value=ALWAYS,
-    type=click.UNPROCESSED,
-    help="Backup file whether modified or not",
-)
-@click.option(
-    "-i",
-    "--backup-ext",
-    metavar="EXT",
-    help="Extension for backup file [default: ~]",
-)
-@click.option(
-    "-e",
-    "--regexp",
-    "regexp_opt",
-    metavar="REGEX",
-    help="Delete lines matching REGEX",
-)
-@click.option(
-    "-o",
-    "--outfile",
-    type=click.File("w"),
-    help="Write output to given file",
-)
-@click.argument("regexp", required=False)
-@click.argument("file", required=False)
-def remove(
-    regexp: str | None,
-    file: str | None,
-    regexp_opt: str | None,
-    backup: BackupWhen | None,
-    backup_ext: str | None,
-    outfile: TextIO | None = None,
-) -> None:
-    """
-    Delete all lines from FILE that match REGEXP.
+        addparser = subparsers.add_parser(
+            "add",
+            help="Add LINE to FILE if it's not already present.",
+            description=(
+                "If a Python regular expression is given with the `-e`/`--regexp`\n"
+                "option and it matches any lines in the file, LINE will replace the last\n"
+                "matching line (or the first matching line, if `--match-first` is given).\n"
+                "If the regular expression does not match any lines (or no regular\n"
+                "expression is specified) and LINE is not found in the file, the line is\n"
+                "inserted at the end of the file by default; this can be changed with the\n"
+                "`--after-first`, `--after-last`, `--before-first`, `--before-last`,\n"
+                "and `--bof` options.\n"
+                "\n"
+                "If no file name is given on the command line, input is read from standard\n"
+                "input, and the result is written to standard output.  It is an error to\n"
+                "specify any of the `--backup-changed`, `--backup-always`, `--backup-ext`,\n"
+                "or `--create` options when no file is given.\n"
+            ),
+        )
 
-    If no file name is given on the command line, input is read from standard
-    input, and the result is written to standard output.  It is an error to
-    specify any of the `--backup-changed`, `--backup-always`, or `--backup-ext`
-    options when no file is given.
-    """
-    if backup_ext is not None and backup is None:
-        backup = CHANGED
-    if backup_ext == "":
-        raise click.UsageError("--backup-ext cannot be empty")
-    if regexp_opt is None:
-        if regexp is None:
-            raise click.UsageError("No REGEXP given")
+        addparser.add_argument(
+            "-a",
+            "--after-first",
+            metavar="REGEX",
+            type=AfterFirst,
+            dest="inserter",
+            help="Insert LINE after the first line matching REGEX",
+        )
+        addparser.add_argument(
+            "-A",
+            "--after-last",
+            metavar="REGEX",
+            type=AfterLast,
+            dest="inserter",
+            help="Insert LINE after the last line matching REGEX",
+        )
+        addparser.add_argument(
+            "-b",
+            "--before-first",
+            metavar="REGEX",
+            type=BeforeFirst,
+            dest="inserter",
+            help="Insert LINE before the first line matching REGEX",
+        )
+        addparser.add_argument(
+            "-B",
+            "--before-last",
+            metavar="REGEX",
+            type=BeforeLast,
+            dest="inserter",
+            help="Insert LINE before the last line matching REGEX",
+        )
+        addparser.add_argument(
+            "--bof",
+            action="store_const",
+            const=AtBOF(),
+            dest="inserter",
+            help="Insert LINE at the beginning of the file",
+        )
+        addparser.add_argument(
+            "--eof",
+            action="store_const",
+            const=AtEOF(),
+            dest="inserter",
+            help="Insert LINE at the end of the file [default]",
+        )
+        addparser.add_argument(
+            "-e",
+            "--regexp",
+            metavar="REGEX",
+            help="Replace the last line matching REGEX with LINE",
+        )
+        addparser.add_argument(
+            "--backrefs",
+            action="store_true",
+            help="Use `--regexp` match to expand capturing groups in LINE",
+        )
+        addparser.add_argument(
+            "--backup",
+            "--backup-changed",
+            action="store_const",
+            const=CHANGED,
+            dest="backup",
+            help="Backup file if modified",
+        )
+        addparser.add_argument(
+            "--backup-always",
+            action="store_const",
+            const=ALWAYS,
+            dest="backup",
+            help="Backup file whether modified or not",
+        )
+        addparser.add_argument(
+            "-i",
+            "--backup-ext",
+            metavar="EXT",
+            help="Extension for backup file [default: ~]",
+        )
+        addparser.add_argument(
+            "-c",
+            "--create",
+            action="store_true",
+            help="Treat nonexistent FILE as empty",
+        )
+        addparser.add_argument(
+            "-L",
+            "--line",
+            dest="line_opt",
+            metavar="LINE",
+            help="Use LINE as the line to insert",
+        )
+        addparser.add_argument(
+            "-m",
+            "--match-first",
+            action="store_true",
+            dest="match_first",
+            help="`--regexp` replaces first matching line in input",
+        )
+        addparser.add_argument(
+            "-M",
+            "--match-last",
+            action="store_false",
+            dest="match_first",
+            help="`--regexp` replaces last matching line in input [default]",
+        )
+        addparser.add_argument(
+            "-o", "--outfile", metavar="FILE", help="Write output to given file"
+        )
+        addparser.add_argument("line", nargs="?")
+        addparser.add_argument("file", nargs="?")
+
+        removeparser = subparsers.add_parser(
+            "remove",
+            help="Delete all lines from FILE that match REGEXP",
+            description=(
+                "If no file name is given on the command line, input is read from standard\n"
+                "input, and the result is written to standard output.  It is an error to\n"
+                "specify any of the `--backup-changed`, `--backup-always`, or `--backup-ext`\n"
+                "options when no file is given.\n"
+            ),
+        )
+
+        removeparser.add_argument(
+            "--backup",
+            "--backup-changed",
+            action="store_const",
+            const=CHANGED,
+            dest="backup",
+            help="Backup file if modified",
+        )
+        removeparser.add_argument(
+            "--backup-always",
+            action="store_const",
+            const=ALWAYS,
+            dest="backup",
+            help="Backup file whether modified or not",
+        )
+        removeparser.add_argument(
+            "-i",
+            "--backup-ext",
+            metavar="EXT",
+            help="Extension for backup file [default: ~]",
+        )
+        removeparser.add_argument(
+            "-e",
+            "--regexp",
+            metavar="REGEX",
+            dest="regexp_opt",
+            help="Replace the last line matching REGEX with LINE",
+        )
+        removeparser.add_argument(
+            "-o", "--outfile", metavar="FILE", help="Write output to given file"
+        )
+        removeparser.add_argument("regexp", nargs="?")
+        removeparser.add_argument("file", nargs="?")
+
+        args = parser.parse_args(argv)
+        subcommand: Subcommand
+        match args.subcommand:
+            case "add":
+                subcommand = AddCommand(
+                    line=args.line,
+                    file=args.file,
+                    line_opt=args.line_opt,
+                    regexp=args.regexp,
+                    backrefs=args.backrefs,
+                    backup=args.backup,
+                    backup_ext=args.backup_ext,
+                    create=args.create,
+                    match_first=args.match_first,
+                    inserter=args.inserter,
+                    outfile=args.outfile,
+                )
+            case "remove":
+                subcommand = RemoveCommand(
+                    regexp=args.regexp,
+                    file=args.file,
+                    regexp_opt=args.regexp_opt,
+                    backup=args.backup,
+                    backup_ext=args.backup_ext,
+                    outfile=args.outfile,
+                )
+            case cmd:  # pragma: no cover
+                raise AssertionError(f"Unexpected subcommand: {cmd!r}")
+        return Command(subcommand=subcommand)
+
+    def run(self) -> int:
+        try:
+            return self.subcommand.run()
+        except Exception as e:
+            print(f"lineinfile: {e}", file=sys.stderr)
+            return 1
+
+
+@dataclass
+class AddCommand:
+    line: str | None
+    file: str | None
+    line_opt: str | None
+    regexp: str | None
+    backrefs: bool
+    backup: BackupWhen | None
+    backup_ext: str | None
+    create: bool
+    match_first: bool
+    inserter: Inserter | None
+    outfile: str | None
+
+    def run(self) -> int:
+        backup: BackupWhen | None
+        if self.backup_ext is not None and self.backup is None:
+            backup = CHANGED
         else:
-            theregexp = regexp
-        thefile = "-" if file is None else file
-    else:
-        theregexp = regexp_opt
-        thefile = "-" if regexp is None else regexp
-        if file is not None:
-            raise click.UsageError(
-                "-e/--regexp given with too many positional arguments"
+            backup = self.backup
+        if self.backrefs and self.regexp is None:
+            raise ValueError("--backrefs cannot be specified without --regexp")
+        if self.backup_ext == "":
+            raise ValueError("--backup-ext cannot be empty")
+        if self.line_opt is None:
+            if self.line is None:
+                raise ValueError("No LINE given")
+            else:
+                theline = self.line
+            thefile = "-" if self.file is None else self.file
+        else:
+            theline = self.line_opt
+            thefile = "-" if self.line is None else self.line
+            if self.file is not None:
+                raise ValueError("-L/--line given with too many positional arguments")
+        if not self.backrefs:
+            theline = unescape(theline)
+        if thefile == "-" or self.outfile is not None:
+            if thefile == "-":
+                errmsg = "{option} cannot be set when reading from standard input."
+            else:
+                errmsg = "{option} is incompatible with --outfile."
+            if self.backup_ext is not None:
+                raise ValueError(errmsg.format(option="--backup-ext"))
+            if backup is CHANGED:
+                raise ValueError(errmsg.format(option="--backup-changed"))
+            if backup is ALWAYS:
+                raise ValueError(errmsg.format(option="--backup-always"))
+            if self.create:
+                raise ValueError(errmsg.format(option="--create"))
+            if thefile == "-":
+                before = sys.stdin.read()
+            else:
+                before = Path(thefile).read_text(encoding="utf-8")
+            after = add_line_to_string(
+                before,
+                theline,
+                regexp=self.regexp,
+                inserter=self.inserter,
+                match_first=self.match_first,
+                backrefs=self.backrefs,
             )
-    if thefile == "-" or outfile is not None:
-        if thefile == "-":
-            errmsg = "{option} cannot be set when reading from standard input."
+            if self.outfile is None or self.outfile == "-":
+                print(after, end="")
+            else:
+                Path(self.outfile).write_text(after, encoding="utf-8")
         else:
-            errmsg = "{option} is incompatible with --outfile."
-        if backup_ext is not None:
-            raise click.UsageError(errmsg.format(option="--backup-ext"))
-        if backup is CHANGED:
-            raise click.UsageError(errmsg.format(option="--backup-changed"))
-        if backup is ALWAYS:
-            raise click.UsageError(errmsg.format(option="--backup-always"))
-        with click.open_file(thefile, encoding="utf-8") as fp:
-            before = fp.read()
-        after = remove_lines_from_string(before, theregexp)
-        if outfile is None:
-            outfp = click.get_text_stream("stdout")
+            add_line_to_file(
+                thefile,
+                theline,
+                regexp=self.regexp,
+                inserter=self.inserter,
+                match_first=self.match_first,
+                backrefs=self.backrefs,
+                backup=backup,
+                backup_ext=self.backup_ext,
+                create=self.create,
+                encoding="utf-8",
+            )
+        return 0
+
+
+@dataclass
+class RemoveCommand:
+    regexp: str | None
+    file: str | None
+    regexp_opt: str | None
+    backup: BackupWhen | None
+    backup_ext: str | None
+    outfile: str | None
+
+    def run(self) -> int:
+        backup: BackupWhen | None
+        if self.backup_ext is not None and self.backup is None:
+            backup = CHANGED
         else:
-            outfp = outfile
-        # Don't use click.echo(), as it modifies ANSI sequences on Windows
-        print(after, end="", file=outfp)
-    else:
-        remove_lines_from_file(
-            thefile,
-            theregexp,
-            backup=backup,
-            backup_ext=backup_ext,
-            encoding="utf-8",
-        )
+            backup = self.backup
+        if self.backup_ext == "":
+            raise ValueError("--backup-ext cannot be empty")
+        if self.regexp_opt is None:
+            if self.regexp is None:
+                raise ValueError("No REGEXP given")
+            else:
+                theregexp = self.regexp
+            thefile = "-" if self.file is None else self.file
+        else:
+            theregexp = self.regexp_opt
+            thefile = "-" if self.regexp is None else self.regexp
+            if self.file is not None:
+                raise ValueError("-e/--regexp given with too many positional arguments")
+        if thefile == "-" or self.outfile is not None:
+            if thefile == "-":
+                errmsg = "{option} cannot be set when reading from standard input."
+            else:
+                errmsg = "{option} is incompatible with --outfile."
+            if self.backup_ext is not None:
+                raise ValueError(errmsg.format(option="--backup-ext"))
+            if backup is CHANGED:
+                raise ValueError(errmsg.format(option="--backup-changed"))
+            if backup is ALWAYS:
+                raise ValueError(errmsg.format(option="--backup-always"))
+            if thefile == "-":
+                before = sys.stdin.read()
+            else:
+                before = Path(thefile).read_text(encoding="utf-8")
+            after = remove_lines_from_string(before, theregexp)
+            if self.outfile is None or self.outfile == "-":
+                print(after, end="")
+            else:
+                Path(self.outfile).write_text(after, encoding="utf-8")
+        else:
+            remove_lines_from_file(
+                thefile,
+                theregexp,
+                backup=backup,
+                backup_ext=self.backup_ext,
+                encoding="utf-8",
+            )
+        return 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    return Command.from_args(argv).run()
 
 
 if __name__ == "__main__":

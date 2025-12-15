@@ -41,9 +41,7 @@ classifiers = [
     "Typing :: Typed",
 ]
 
-dependencies = [
-    "click >= 7.0, != 8.2.2",
-]
+dependencies = []
 
 [project.scripts]
 lineinfile = "lineinfile.__main__:main"

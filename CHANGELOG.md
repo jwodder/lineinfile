@@ -2,6 +2,9 @@ v0.5.0 (in development)
 -----------------------
 - Support Python 3.14
 - Drop support for Python 3.8 and 3.9
+- Drop `click` dependency
+    - As a consequence, CLI arguments of the form `-e REGEX` where `REGEX`
+      begins with a hyphen must now be written as `--regexp=REGEX`.
 
 v0.4.2 (2025-08-02)
 -------------------
