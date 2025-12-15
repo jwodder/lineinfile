@@ -1,5 +1,5 @@
-v0.5.0 (in development)
------------------------
+v0.5.0 (2025-12-15)
+-------------------
 - Support Python 3.14
 - Drop support for Python 3.8 and 3.9
 - Drop `click` dependency

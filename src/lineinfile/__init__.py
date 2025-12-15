@@ -29,7 +29,7 @@ from re import Pattern
 from shutil import copystat
 from typing import Any, TypeAlias
 
-__version__ = "0.5.0.dev1"
+__version__ = "0.5.0"
 __author__ = "John Thorvald Wodder II"
 __author_email__ = "lineinfile@varonathe.org"
 __license__ = "MIT"
