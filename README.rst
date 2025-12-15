@@ -274,7 +274,9 @@ Options
                             ``--backup-always`` is also given.
 
 -e REGEX, --regexp REGEX    Delete all lines that match ``REGEX``.  This option
-                            is useful when ``REGEX`` begins with a hyphen.
+                            is useful when ``REGEX`` begins with a hyphen (in
+                            which case the regex must be given as
+                            "``--regexp=REGEX``").
 
 -o FILE, --outfile FILE     Write the resulting file contents to ``FILE``
                             instead of modifying the input file.
