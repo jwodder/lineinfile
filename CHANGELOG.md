@@ -1,5 +1,5 @@
-v0.6.0 (in development)
------------------------
+v0.5.1 (2025-12-17)
+-------------------
 - Adjust formatting of subcommand descriptions in `--help` output
 
 v0.5.0 (2025-12-15)
