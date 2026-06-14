@@ -1,5 +1,4 @@
 from __future__ import annotations
-from collections.abc import Iterator
 from dataclasses import dataclass
 from operator import attrgetter
 import os
@@ -50,7 +49,8 @@ class AddLineCase:
 # inserters contain mutable state.
 
 
-def add_line_cases() -> Iterator[AddLineCase]:
+def add_line_cases() -> list[AddLineCase]:
+    cases = []
     for cfgfile in sorted(CASES_DIR.glob("*.py")):
         cfg: dict[str, Any] = {}
         exec(cfgfile.read_text(), cfg)
@@ -63,21 +63,22 @@ def add_line_cases() -> Iterator[AddLineCase]:
                 source = fp.read()
         with cfgfile.with_suffix(".txt").open(newline="") as fp:
             output = fp.read()
-        yield AddLineCase(
-            name=cfgfile.with_suffix("").name,
-            input=source,
-            line=cfg["line"],
-            args=cfg["args"],
-            options=cfg["options"],
-            output=output,
-            nonuniversal_lines=cfg.get("nonuniversal_lines", False),
+        cases.append(
+            AddLineCase(
+                name=cfgfile.with_suffix("").name,
+                input=source,
+                line=cfg["line"],
+                args=cfg["args"],
+                options=cfg["options"],
+                output=output,
+                nonuniversal_lines=cfg.get("nonuniversal_lines", False),
+            )
         )
+    return cases
 
 
-def file_add_line_cases() -> Iterator[AddLineCase]:
-    for c in add_line_cases():
-        if not c.nonuniversal_lines:
-            yield c
+def file_add_line_cases() -> list[AddLineCase]:
+    return [c for c in add_line_cases() if not c.nonuniversal_lines]
 
 
 def listdir(dirpath: Path) -> list[str]:
