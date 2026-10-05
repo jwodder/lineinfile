@@ -46,7 +46,9 @@ class Command:
             "-V", "--version", action="version", version=f"%(prog)s {__version__}"
         )
 
-        subparsers = parser.add_subparsers(title="subcommands", dest="subcommand")
+        subparsers = parser.add_subparsers(
+            title="subcommands", dest="subcommand", required=True
+        )
 
         addparser = subparsers.add_parser(
             "add",

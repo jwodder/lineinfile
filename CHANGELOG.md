@@ -1,6 +1,7 @@
 v0.5.2 (in development)
 -----------------------
 - **Bugfix**: The CLI now exits nonzero when an error occurs
+- Better error output when no arguments are provided to the CLI
 
 v0.5.1 (2025-12-17)
 -------------------
