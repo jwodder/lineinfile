@@ -1,3 +1,7 @@
+v0.5.2 (in development)
+-----------------------
+- **Bugfix**: The CLI now exits nonzero when an error occurs
+
 v0.5.1 (2025-12-17)
 -------------------
 - Adjust formatting of subcommand descriptions in `--help` output
