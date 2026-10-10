@@ -1,3 +1,7 @@
+v0.6.0 (in development)
+-----------------------
+- Support Python 3.15
+
 v0.5.2 (2026-10-05)
 -------------------
 - **Bugfix**: The CLI now exits nonzero when an error occurs
