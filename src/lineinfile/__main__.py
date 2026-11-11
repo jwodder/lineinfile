@@ -220,7 +220,7 @@ class Command:
             "--regexp",
             metavar="REGEX",
             dest="regexp_opt",
-            help="Replace the last line matching REGEX with LINE",
+            help="Delete all lines matching REGEX",
         )
         removeparser.add_argument(
             "-o", "--outfile", metavar="FILE", help="Write output to given file"
